@@ -1,0 +1,78 @@
+# Local editor and OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+settings.json
+*.swp
+*.swo
+*~
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+.uv-cache/
+
+# C, C++, and compiled output
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+# Java and JVM tooling
+*.class
+target/
+.gradle/
+build/
+out/
+
+# MATLAB, CAD, and engineering tooling
+*.asv
+slprj/
+*.autosave
+*.bak
+*.tmp
+~$*
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Generated reports and local exports
+exports/
+reports/generated/
+
+# Large local data that should be intentionally added through Git LFS if needed
+data/raw/
+data/generated/
+datasets/raw/
+datasets/generated/
