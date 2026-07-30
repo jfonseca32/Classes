@@ -1,0 +1,64 @@
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "**/*.txt"
+          - "**/*.pdf"
+
+python:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.py"
+          - "pyproject.toml"
+          - "uv.lock"
+
+cpp:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.c"
+          - "**/*.cc"
+          - "**/*.cpp"
+          - "**/*.cxx"
+          - "**/*.h"
+          - "**/*.hpp"
+          - "**/CMakeLists.txt"
+
+java:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.java"
+          - "**/pom.xml"
+          - "**/build.gradle"
+          - "**/build.gradle.kts"
+
+cad-cam:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.sldprt"
+          - "**/*.sldasm"
+          - "**/*.slddrw"
+          - "**/*.step"
+          - "**/*.stp"
+          - "**/*.iges"
+          - "**/*.igs"
+          - "**/*.stl"
+          - "**/*.f3d"
+          - "**/*.dwg"
+          - "**/*.dxf"
+
+data:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.csv"
+          - "**/*.tsv"
+          - "**/*.mat"
+          - "**/*.h5"
+          - "**/*.hdf5"
+          - "**/*.npy"
+          - "**/*.npz"
+          - "**/*.pkl"
+
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
