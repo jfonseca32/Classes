@@ -1,0 +1,19 @@
+name: me4710
+
+channels:
+  - defaults
+
+dependencies:
+  - python=3.13
+  - jupyterlab
+  - notebook
+  - ipykernel
+  - numpy
+  - pandas
+  - matplotlib
+  - openpyxl
+  - ipywidgets
+  - pip
+  - setuptools<82
+  - pip:
+      - ydata-profiling==4.18.4
