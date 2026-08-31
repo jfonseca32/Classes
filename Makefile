@@ -15,6 +15,7 @@ ME4710_ENV := $(ME4710_DIR)/environment.yml
 install:
 	$(UV) sync --dev
 	git lfs install
+	$(PREK) install
 
 lint:
 	$(PREK) run --all-files
@@ -25,7 +26,7 @@ format:
 test: test-python test-cpp test-java
 
 test-python:
-	@if find . -path './.venv' -prune -o -path './.git' -prune -o -name 'test_*.py' -print -quit | grep -q .; then \
+	@if git ls-files --cached --others --exclude-standard -- '*.py' | grep -Eq '(^|/)(test_[^/]*|[^/]*_test)\.py$$'; then \
 		$(PYTEST); \
 	else \
 		echo "No Python tests found."; \
@@ -54,16 +55,15 @@ clean:
 	find . -type f \( -name '.coverage' -o -name '*.pyc' -o -name '*.class' -o -name '*.o' -o -name '*.out' \) -delete
 
 install-me4710:
-        conda env create --file $(ME4710_ENV)
-        conda run --name me4710 python -m ipykernel install --user --name me4710 --display-name "Python (ME 4710)"
+	conda env create --file $(ME4710_ENV)
+	conda run --name me4710 python -m ipykernel install --user --name me4710 --display-name "Python (ME 4710)"
 
 update-me4710:
-        conda env update --name me4710 --file $(ME4710_ENV) --prune
-        conda run --name me4710 python -m ipykernel install --user --name me4710 --display-name "Python (ME 4710)"
+	conda env update --name me4710 --file $(ME4710_ENV) --prune
+	conda run --name me4710 python -m ipykernel install --user --name me4710 --display-name "Python (ME 4710)"
 
 kernel-me4710:
-        conda run --name me4710 python -m ipykernel install --user --name me4710 --display-name "Python (ME 4710)"
+	conda run --name me4710 python -m ipykernel install --user --name me4710 --display-name "Python (ME 4710)"
 
 jupyter-me4710:
-        conda run --no-capture-output --name me4710 jupyter lab $(ME4710_DIR)/Homeworks/HW1
-
+	conda run --no-capture-output --name me4710 jupyter lab $(ME4710_DIR)/Homeworks/HW1
