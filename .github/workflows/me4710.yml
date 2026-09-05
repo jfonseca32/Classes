@@ -16,8 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  validate:
-    name: Validate coursework files
+  CI:
+    name: ME4710 Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -48,7 +48,7 @@ jobs:
               print(f"Validated {notebook}")
           PY
 
-      - name: Validate spreadsheet files
+      - name: Validate files
         shell: bash
         run: |
           while IFS= read -r -d '' spreadsheet; do

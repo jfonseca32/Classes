@@ -16,8 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  validate:
-    name: Validate coursework files
+  CI:
+    name: GT4100 Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +25,7 @@ jobs:
         with:
           lfs: true
 
-      - name: Validate Office documents
+      - name: Run Tests
         shell: bash
         run: |
           while IFS= read -r -d '' document; do

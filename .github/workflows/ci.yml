@@ -1,4 +1,4 @@
-name: Repository Quality
+name: Lint
 
 on:
   pull_request:
