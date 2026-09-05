@@ -1,0 +1,38 @@
+name: CS3630
+
+on:
+  pull_request:
+    paths:
+      - "courses/CS-3630_Introduction_to_Perception_and_Robotics/**"
+      - ".github/workflows/cs3630.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "courses/CS-3630_Introduction_to_Perception_and_Robotics/**"
+      - ".github/workflows/cs3630.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  project-1-python:
+    name: Project 1 Python tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: courses/CS-3630_Introduction_to_Perception_and_Robotics/Homeworks/P1/project_1a_python/requirements.txt
+
+      - name: Install Project 1 dependencies
+        run: python -m pip install -r courses/CS-3630_Introduction_to_Perception_and_Robotics/Homeworks/P1/project_1a_python/requirements.txt
+
+      - name: Run Project 1 tests
+        run: python -m pytest -q courses/CS-3630_Introduction_to_Perception_and_Robotics/Homeworks/P1/project_1a_python/test_project1.py
