@@ -1,0 +1,57 @@
+name: ME4710
+
+on:
+  pull_request:
+    paths:
+      - "courses/ME-4710_Foundations_of_ML_for_Engineers/**"
+      - ".github/workflows/me4710.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "courses/ME-4710_Foundations_of_ML_for_Engineers/**"
+      - ".github/workflows/me4710.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  CI:
+    name: ME4710 Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Validate environment and notebooks
+        run: |
+          python -m pip install pyyaml
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          import yaml
+
+          course = Path("courses/ME-4710_Foundations_of_ML_for_Engineers")
+          environment = yaml.safe_load((course / "environment.yml").read_text())
+          assert environment["name"] == "me4710"
+          assert "python=3.13" in environment["dependencies"]
+
+          for notebook in course.rglob("*.ipynb"):
+              json.loads(notebook.read_text())
+              print(f"Validated {notebook}")
+          PY
+
+      - name: Validate files
+        shell: bash
+        run: |
+          while IFS= read -r -d '' spreadsheet; do
+            unzip -t "$spreadsheet" >/dev/null
+            echo "Validated $spreadsheet"
+          done < <(find courses/ME-4710_Foundations_of_ML_for_Engineers -name '*.xlsx' -print0)

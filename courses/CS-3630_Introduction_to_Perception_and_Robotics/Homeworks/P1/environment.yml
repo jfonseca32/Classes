@@ -1,0 +1,13 @@
+name: cs3630_p1
+
+channels:
+  - defaults
+
+dependencies:
+  - python=3.12
+  - "numpy>=1.24,<3"
+  - "pytest>=7,<9"
+  - "ipykernel>=6,<9"
+  - jupyterlab
+  - notebook
+  - pip
