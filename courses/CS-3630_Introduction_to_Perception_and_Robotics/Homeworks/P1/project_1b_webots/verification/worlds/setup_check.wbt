@@ -1,0 +1,53 @@
+#VRML_SIM R2025a utf8
+
+WorldInfo {
+  basicTimeStep 32
+}
+Viewpoint {
+  orientation 0.373999 0.898418 0.229006 2.09863
+  position 2.8 -3.2 2.4
+}
+Background {
+  skyColor [
+    0.85 0.9 1
+  ]
+}
+DirectionalLight {
+  direction -0.5 0.5 -1
+  intensity 1.5
+}
+Solid {
+  translation 0 0 -0.05
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.15 0.2 0.25
+        roughness 0.8
+        metalness 0
+      }
+      geometry Box {
+        size 4 4 0.1
+      }
+    }
+  ]
+  name "floor"
+}
+Robot {
+  translation 0 0 0.12
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.1 0.85 0.25
+        roughness 0.35
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.24
+        radius 0.28
+      }
+    }
+  ]
+  name "CS 3630 setup robot"
+  controller "setup_check"
+  supervisor TRUE
+}
