@@ -1,0 +1,196 @@
+#VRML_SIM R2025a utf8
+
+# Cyberbotics' official ABB IRB 4600/40 provides the six-axis industrial arm.
+# This wrapper adds the Project 2 controller and a powered two-finger claw.
+EXTERNPROTO "Irb4600-40.proto"
+
+PROTO IndustrialSortingArm [
+  field SFVec3f     translation 0 0 0
+  field SFRotation  rotation    0 0 1 0
+  field SFString    name        "Project 2 industrial sorting arm"
+  field SFString    controller  "project2_sorting"
+  field MFString    controllerArgs []
+  field SFBool      supervisor  TRUE
+]
+{
+  Irb4600-40 {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    controller IS controller
+    controllerArgs IS controllerArgs
+    supervisor IS supervisor
+    staticBase TRUE
+    color 1 0.38 0.015
+    handSlot [
+      Solid {
+        translation 0 0 0.025
+        name "powered two-finger claw"
+        children [
+          Shape {
+            appearance DEF CLAW_DARK PBRAppearance {
+              baseColor 0.055 0.065 0.080
+              roughness 0.28
+              metalness 0.82
+            }
+            geometry Cylinder {
+              height 0.075
+              radius 0.105
+              subdivision 32
+            }
+          }
+          Pose {
+            translation 0 0 0.055
+            children [
+              Shape {
+                appearance DEF CLAW_ORANGE PBRAppearance {
+                  baseColor 1 0.38 0.015
+                  roughness 0.30
+                  metalness 0.34
+                }
+                geometry Cylinder {
+                  height 0.045
+                  radius 0.125
+                  subdivision 32
+                }
+              }
+            ]
+          }
+          Pose {
+            translation 0 0 0.090
+            children [
+              Shape {
+                appearance USE CLAW_DARK
+                geometry Box {
+                  size 0.15 0.25 0.075
+                }
+              }
+            ]
+          }
+          HingeJoint {
+            jointParameters HingeJointParameters {
+              axis 1 0 0
+              anchor 0 0.085 0.105
+            }
+            device [
+              RotationalMotor {
+                name "left_claw_motor"
+                minPosition 0
+                maxPosition 0.55
+                maxVelocity 2.5
+                maxTorque 30
+              }
+            ]
+            endPoint Solid {
+              translation 0 0.085 0.105
+              name "left industrial claw finger"
+              children [
+                Pose {
+                  translation 0 0 0.09
+                  children [
+                    Shape {
+                      appearance USE CLAW_ORANGE
+                      geometry Box {
+                        size 0.055 0.050 0.19
+                      }
+                    }
+                  ]
+                }
+                Pose {
+                  translation 0 -0.018 0.182
+                  children [
+                    Shape {
+                      appearance DEF GRIP_PAD PBRAppearance {
+                        baseColor 0.025 0.030 0.038
+                        roughness 0.92
+                        metalness 0
+                      }
+                      geometry Box {
+                        size 0.075 0.050 0.065
+                      }
+                    }
+                  ]
+                }
+              ]
+              boundingObject Pose {
+                translation 0 0 0.09
+                children [
+                  Box {
+                    size 0.055 0.050 0.19
+                  }
+                ]
+              }
+              physics Physics {
+                density -1
+                mass 0.18
+              }
+            }
+          }
+          HingeJoint {
+            jointParameters HingeJointParameters {
+              axis 1 0 0
+              anchor 0 -0.085 0.105
+            }
+            device [
+              RotationalMotor {
+                name "right_claw_motor"
+                minPosition -0.55
+                maxPosition 0
+                maxVelocity 2.5
+                maxTorque 30
+              }
+            ]
+            endPoint Solid {
+              translation 0 -0.085 0.105
+              name "right industrial claw finger"
+              children [
+                Pose {
+                  translation 0 0 0.09
+                  children [
+                    Shape {
+                      appearance USE CLAW_ORANGE
+                      geometry Box {
+                        size 0.055 0.050 0.19
+                      }
+                    }
+                  ]
+                }
+                Pose {
+                  translation 0 0.018 0.182
+                  children [
+                    Shape {
+                      appearance USE GRIP_PAD
+                      geometry Box {
+                        size 0.075 0.050 0.065
+                      }
+                    }
+                  ]
+                }
+              ]
+              boundingObject Pose {
+                translation 0 0 0.09
+                children [
+                  Box {
+                    size 0.055 0.050 0.19
+                  }
+                ]
+              }
+              physics Physics {
+                density -1
+                mass 0.18
+              }
+            }
+          }
+        ]
+        boundingObject Cylinder {
+          height 0.12
+          radius 0.125
+        }
+        physics Physics {
+          density -1
+          mass 1.4
+        }
+      }
+    ]
+  }
+}

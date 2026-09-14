@@ -5,9 +5,13 @@ channels:
 
 dependencies:
   - python=3.12
-  - "numpy>=1.24,<3"
+  - "numpy>=1.24,<2"
+  - "matplotlib>=3.8,<4"
   - "pytest>=7,<9"
   - "ipykernel>=6,<9"
   - jupyterlab
   - notebook
   - pip
+  - pip:
+      - gtsam==4.2.2
+      - gtbook==0.0.38

@@ -1,0 +1,88 @@
+#VRML_SIM R2025a utf8
+# template language: javascript
+
+PROTO WarehouseItem [
+  field SFVec3f  translation 0 0 0
+  field SFString name        "warehouse item"
+  field SFInt32  variant     0
+  field SFColor  color       0.2 0.6 0.9
+]
+{
+  Solid {
+    translation IS translation
+    name IS name
+    children [
+      %< if (fields.variant.value === 0) { >%
+        # CC0 generated gear used as the 3D-printed product.
+        Shape {
+          appearance PBRAppearance {
+            baseColor IS color
+            roughness 0.55
+            metalness 0
+          }
+          geometry Mesh {
+            url [
+              "../assets/printed_product.stl"
+            ]
+          }
+        }
+      %< } else if (fields.variant.value === 1) { >%
+        # CC0 gusseted CAD bracket used as structural bracing.
+        Shape {
+          appearance PBRAppearance {
+            baseColor IS color
+            roughness 0.35
+            metalness 0.65
+          }
+          geometry Mesh {
+            url [
+              "../assets/structural_brace.stl"
+            ]
+          }
+        }
+      %< } else if (fields.variant.value === 2) { >%
+        # SparkFun electronics CAD mesh.
+        Shape {
+          appearance PBRAppearance {
+            baseColor IS color
+            roughness 0.45
+            metalness 0.05
+          }
+          geometry Mesh {
+            url [
+              "../assets/pcb_board.stl"
+            ]
+          }
+        }
+      %< } else if (fields.variant.value === 3) { >%
+        # Course-generated tapered NACA 2412 airfoil wing mesh.
+        Shape {
+          appearance PBRAppearance {
+            baseColor IS color
+            roughness 0.7
+            metalness 0
+          }
+          geometry Mesh {
+            url [
+              "../assets/wing.stl"
+            ]
+          }
+        }
+      %< } else { >%
+        # MIT-licensed motor CAD mesh.
+        Shape {
+          appearance PBRAppearance {
+            baseColor IS color
+            roughness 0.3
+            metalness 0.75
+          }
+          geometry Mesh {
+            url [
+              "../assets/motor.stl"
+            ]
+          }
+        }
+      %< } >%
+    ]
+  }
+}
