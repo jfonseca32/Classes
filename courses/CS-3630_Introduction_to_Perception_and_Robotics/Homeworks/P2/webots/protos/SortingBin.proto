@@ -1,0 +1,330 @@
+#VRML_SIM R2025a utf8
+
+# Open-top warehouse tote used for the five decision channels. The lowered
+# front wall leaves the sorted item visible while the raised sides and back
+# make the destination read as a physical bin from the default viewpoint.
+PROTO SortingBin [
+  field SFVec3f    translation 0 0 0
+  field SFRotation rotation    0 0 1 0
+  field SFString   name        "sorting bin"
+  field SFColor    color       0.12 0.58 0.92
+]
+{
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    children [
+      # Reinforced floor and slightly inset interior floor panel.
+      Pose {
+        translation 0 0 -0.04
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.58
+              metalness 0
+            }
+            geometry Box {
+              size 1.12 0.46 0.10
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.018
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.10 0.12 0.15
+              roughness 0.82
+              metalness 0
+            }
+            geometry Box {
+              size 0.98 0.33 0.018
+            }
+          }
+        ]
+      }
+
+      # Full-height side walls.
+      Pose {
+        translation 0 -0.205 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.58
+              metalness 0
+            }
+            geometry Box {
+              size 1.12 0.055 0.36
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0.205 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.58
+              metalness 0
+            }
+            geometry Box {
+              size 1.12 0.055 0.36
+            }
+          }
+        ]
+      }
+
+      # High back wall and lowered front loading wall.
+      Pose {
+        translation 0.532 0 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.58
+              metalness 0
+            }
+            geometry Box {
+              size 0.056 0.46 0.36
+            }
+          }
+        ]
+      }
+      Pose {
+        translation -0.532 0 0.065
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.58
+              metalness 0
+            }
+            geometry Box {
+              size 0.056 0.46 0.15
+            }
+          }
+        ]
+      }
+
+      # Thick rolled rim around the top edges.
+      Pose {
+        translation 0 -0.218 0.36
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.42
+              metalness 0
+            }
+            geometry Box {
+              size 1.17 0.080 0.055
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0.218 0.36
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.42
+              metalness 0
+            }
+            geometry Box {
+              size 1.17 0.080 0.055
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0.548 0 0.36
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.42
+              metalness 0
+            }
+            geometry Box {
+              size 0.080 0.50 0.055
+            }
+          }
+        ]
+      }
+      Pose {
+        translation -0.548 0 0.145
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.42
+              metalness 0
+            }
+            geometry Box {
+              size 0.080 0.50 0.055
+            }
+          }
+        ]
+      }
+
+      # Molded reinforcement ribs make the tote silhouette less box-like.
+      Pose {
+        translation -0.34 -0.239 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.48
+              metalness 0
+            }
+            geometry Box {
+              size 0.055 0.018 0.29
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 -0.239 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.48
+              metalness 0
+            }
+            geometry Box {
+              size 0.055 0.018 0.29
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0.34 -0.239 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.48
+              metalness 0
+            }
+            geometry Box {
+              size 0.055 0.018 0.29
+            }
+          }
+        ]
+      }
+      Pose {
+        translation -0.34 0.239 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.48
+              metalness 0
+            }
+            geometry Box {
+              size 0.055 0.018 0.29
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0.239 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.48
+              metalness 0
+            }
+            geometry Box {
+              size 0.055 0.018 0.29
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0.34 0.239 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.48
+              metalness 0
+            }
+            geometry Box {
+              size 0.055 0.018 0.29
+            }
+          }
+        ]
+      }
+
+      # Neutral label plate on the lowered front wall.
+      Pose {
+        translation -0.563 0 0.078
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.92 0.94 0.96
+              roughness 0.68
+              metalness 0
+            }
+            geometry Box {
+              size 0.012 0.24 0.072
+            }
+          }
+        ]
+      }
+    ]
+    boundingObject Group {
+      children [
+        Pose {
+          translation 0 0 -0.04
+          children [
+            Box {
+              size 1.12 0.46 0.10
+            }
+          ]
+        }
+        Pose {
+          translation 0 -0.205 0.17
+          children [
+            Box {
+              size 1.12 0.055 0.36
+            }
+          ]
+        }
+        Pose {
+          translation 0 0.205 0.17
+          children [
+            Box {
+              size 1.12 0.055 0.36
+            }
+          ]
+        }
+        Pose {
+          translation 0.532 0 0.17
+          children [
+            Box {
+              size 0.056 0.46 0.36
+            }
+          ]
+        }
+        Pose {
+          translation -0.532 0 0.065
+          children [
+            Box {
+              size 0.056 0.46 0.15
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

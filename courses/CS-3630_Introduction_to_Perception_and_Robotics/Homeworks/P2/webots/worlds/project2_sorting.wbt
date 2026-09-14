@@ -1,0 +1,242 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "../protos/IndustrialSortingArm.proto"
+EXTERNPROTO "../protos/SortingBin.proto"
+EXTERNPROTO "../protos/WarehouseItem.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/ThreadMetalPlate.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/Wall.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/conveyors/protos/ConveyorBelt.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/obstacles/protos/OilBarrel.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/pallet/protos/WoodenPalletStack.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/CardboardBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/cabinet/protos/Cabinet.proto"
+
+WorldInfo {
+  title "CS 3630 Project 2 - Probability-Guided Warehouse Sorting"
+  info [
+    "A compact factory sorting cell built from official Cyberbotics Webots assets."
+    "The controller imports main.py and routes each item from the student's posterior and expected-cost decision."
+  ]
+  basicTimeStep 32
+}
+Viewpoint {
+  fieldOfView 0.90
+  orientation -0.19981241 0.33592948 0.92044901 1.14741448
+  position -4.00 -5.06 3.48
+}
+Background {
+  skyColor [
+    0.17 0.19 0.22
+  ]
+}
+DirectionalLight {
+  direction -0.35 0.25 -1
+  color 0.86 0.91 1
+  intensity 1.8
+  ambientIntensity 0.42
+  castShadows TRUE
+}
+PointLight {
+  attenuation 0 0 1
+  intensity 4.2
+  location -2.70 -0.30 2.75
+  castShadows TRUE
+}
+PointLight {
+  attenuation 0 0 1
+  intensity 3.8
+  location 0.70 -0.20 2.75
+}
+
+# Official factory floor, walls, and ceiling define a compact 7 x 4.6 m bay.
+Floor {
+  translation -1.40 -0.05 0
+  name "factory floor"
+  size 7 4.6
+  tileSize 0.7 0.7
+  appearance ThreadMetalPlate {
+  }
+}
+Wall {
+  translation -1.40 2.25 0
+  name "rear factory wall"
+  size 7 0.14 3.10
+}
+Wall {
+  translation -4.90 -0.05 0
+  rotation 0 0 1 1.5708
+  name "side factory wall"
+  size 4.6 0.14 3.10
+}
+Floor {
+  translation -1.40 -0.05 3.10
+  rotation 1 0 0 3.141592
+  name "factory ceiling"
+  size 7 4.6
+  tileSize 0.7 0.7
+  appearance ThreadMetalPlate {
+  }
+}
+
+# Official conveyor, sized like a waist-height industrial line. Its visual
+# belt speed matches the deterministic supervisor queue speed.
+ConveyorBelt {
+  translation -2.00 0 0
+  name "Project 2 intake conveyor"
+  size 4.10 0.72 0.62
+  borderThickness 0.045
+  borderHeight 0.035
+  speed 0.34
+}
+
+# Assignment-specific inspection gate at the exact pickup coordinate.
+DEF SENSOR_GATE Solid {
+  children [
+    Pose {
+      translation -0.36 -0.42 0.94
+      children [
+        Shape {
+          appearance DEF SENSOR_FRAME PBRAppearance {
+            baseColor 0.10 0.18 0.25
+            roughness 0.30
+            metalness 0.78
+          }
+          geometry Box {
+            size 0.075 0.075 0.64
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.36 0.42 0.94
+      children [
+        Shape {
+          appearance USE SENSOR_FRAME
+          geometry Box {
+            size 0.075 0.075 0.64
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.36 0 1.25
+      children [
+        Shape {
+          appearance USE SENSOR_FRAME
+          geometry Box {
+            size 0.10 0.91 0.095
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.36 0 1.19
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.03 0.92 0.73
+            emissiveColor 0.01 0.48 0.34
+            roughness 0.25
+            metalness 0.05
+          }
+          geometry Box {
+            size 0.14 0.20 0.035
+          }
+        }
+      ]
+    }
+  ]
+  name "Bayesian sensor gate"
+}
+
+# Five destinations correspond directly to actions 0 through 4.
+DEF CHANNEL_0 SortingBin {
+  translation 0.92 -1.65 0.20
+  rotation 0 0 1 -0.16
+  name "channel 0 - printed bin"
+  color 0.12 0.58 0.92
+}
+DEF CHANNEL_1 SortingBin {
+  translation 1.00 -1.10 0.20
+  rotation 0 0 1 -0.08
+  name "channel 1 - structural bin"
+  color 0.72 0.74 0.78
+}
+DEF CHANNEL_2 SortingBin {
+  translation 1.04 -0.55 0.20
+  name "channel 2 - board bin"
+  color 0.16 0.72 0.38
+}
+DEF CHANNEL_3 SortingBin {
+  translation 1.00 0.00 0.20
+  rotation 0 0 1 0.08
+  name "channel 3 - wing bin"
+  color 0.68 0.30 0.86
+}
+DEF CHANNEL_4 SortingBin {
+  translation 0.92 0.55 0.20
+  rotation 0 0 1 0.16
+  name "channel 4 - motor bin"
+  color 0.90 0.25 0.22
+}
+
+IndustrialSortingArm {
+  translation 0.05 -0.75 0.02
+}
+
+# Official factory props stay close to the walls, outside the active cell.
+WoodenPalletStack {
+  translation -4.30 1.55 0
+  rotation 0 0 1 1.5708
+  name "incoming pallet stack"
+  palletNumber 3
+}
+CardboardBox {
+  translation -3.55 1.58 0.31
+  rotation 0 0 1 -0.20
+  name "staged material box"
+}
+Cabinet {
+  translation 0.15 2.17 0
+  rotation 0 0 1 -1.5708
+  name "factory tool cabinet"
+  depth 0.42
+}
+OilBarrel {
+  translation 1.55 1.60 0.44
+  rotation 0 0 1 0.18
+  name "factory oil barrel"
+}
+
+# Compact five-item queue, centered on the official conveyor.
+DEF ITEM_0 WarehouseItem {
+  translation -1.35 0 0.72
+  name "3D printed product"
+  variant 0
+  color 0.20 0.62 0.95
+}
+DEF ITEM_1 WarehouseItem {
+  translation -1.92 0 0.72
+  name "structural bracing"
+  variant 1
+  color 0.74 0.76 0.80
+}
+DEF ITEM_2 WarehouseItem {
+  translation -2.49 0 0.70
+  name "PCB board"
+  variant 2
+  color 0.05 0.46 0.18
+}
+DEF ITEM_3 WarehouseItem {
+  translation -3.06 0 0.71
+  name "wing component"
+  variant 3
+  color 0.08 0.10 0.13
+}
+DEF ITEM_4 WarehouseItem {
+  translation -3.63 0 0.72
+  name "motor"
+  variant 4
+  color 0.32 0.35 0.40
+}
