@@ -195,7 +195,7 @@ def get_cost_table() -> np.ndarray:
     """
     num_rows: int = len(COST_DICT)
     num_cols: int = len(next(iter(COST_DICT.values())))  # len of first inner dict; all same len
-    cost_table: np.ndarray = np.zeroes((num_rows, num_cols))
+    cost_table: np.ndarray = np.zeros((num_rows, num_cols))
 
     for row, items in enumerate(COST_DICT.values()):
         for col, cost in enumerate(items.values()):
@@ -205,18 +205,18 @@ def get_cost_table() -> np.ndarray:
 
 
 # 1. Weight - continuous-valued sensor
-def get_pWT() -> np.array:
+def get_pWT() -> np.ndarray:
     """
     Makes P(Weight | Item Class) as means and standard deviations.
 
     Returns
     -------
-    np.array
+    np.ndarray
         A 5x2 numpy array of [mean, std_dev] for each class.
     """
     # Mean and Std. Dev. for:
     # 3D_Printed_Product, Structural_Bracing, PCB_Board, Wing_Component, Motor
-    pWT: np.array = np.array([[150, 75], [800, 400], [50, 25], [250, 125], [600, 300]])
+    pWT: np.ndarray = np.array([[150, 75], [800, 400], [50, 25], [250, 125], [600, 300]])
     return pWT
 
 
@@ -250,17 +250,17 @@ def sample_weight(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> float:
 
 
 # 2. Thickness - multi-valued sensor
-def get_pTT() -> np.array:
+def get_pTT() -> np.ndarray:
     """
     Returns P(Thickness | Item Class) as a NumPy array.
 
     Returns
     -------
-    np.array
+    np.ndarray
         A 5x3 NumPy array where pTT[i, j] is the probability of thickness j given class i.
     """
     # P(Thin | Class), P(Medium | Class), P(Thick | Class)
-    pTT: np.array = np.array(
+    pTT: np.ndarray = np.array(
         [
             [0.9, 0.1, 0.0],  # 3D Printed Product
             [0.0, 0.2, 0.8],  # Structural Bracing
@@ -305,17 +305,17 @@ def sample_thickness(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> Litera
 
 
 # 3. Rigidity - binary sensor
-def get_pRT() -> np.array:
+def get_pRT() -> np.ndarray:
     """
     Returns P(Rigidity | Item Class) as a NumPy array.
 
     Returns
     -------
-    np.array
+    np.ndarray
         A 5x2 NumPy array where pRT[i, j] is the probability of rigidity j given class i.
     """
     # P(Rigid | Class), P(Flexible | Class)
-    pRT = np.array(
+    pRT: np.ndarray = np.array(
         [
             [0.2, 0.8],  # 3D Printed Product
             [0.9, 0.1],  # Structural Bracing
@@ -360,17 +360,17 @@ def sample_rigidity(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> Literal
 
 
 # 4. Surface Material - multi-valued sensor
-def get_pMT() -> np.array:
+def get_pMT() -> np.ndarray:
     """
     Returns P(Material | Item Class) as a NumPy array.
 
     Returns
     -------
-    np.array
+    np.ndarray
         A 5x3 NumPy array where pMT[i, j] is the probability of material j given class i.
     """
     # P(Plastic | Class), P(Metal | Class), P(Ceramic | Class)
-    pMT = np.array(
+    pMT: np.ndarray = np.array(
         [
             [0.95, 0.02, 0.03],  # 3D Printed Product
             [0.05, 0.85, 0.1],  # Structural Bracing
@@ -385,7 +385,7 @@ def get_pMT() -> np.array:
 
 def sample_material(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> Literal[0, 1, 2]:
     """
-    Returns a sample of rigidity for a given item class.
+    Returns a sample of material for a given item class.
 
     Having item_class be an int is very brittle. Should instead use Item
     and inside call Item.value.
@@ -492,7 +492,7 @@ def bayes_given_all_sensors(
 
 def make_decision(posteriors: list[float]) -> Literal[0, 1, 2, 3, 4]:
     """
-    Returns the decision made by the robot given the posteriors.
+    Returns the decision made by the robot given the posteriors, and cost table.
 
     Parameters
     ----------
@@ -504,8 +504,12 @@ def make_decision(posteriors: list[float]) -> Literal[0, 1, 2, 3, 4]:
     Literal[0, 1, 2, 3, 4]
         An int indicating the action (chosen class) taken by the robot.
     """
-    item_class = np.argmax(posteriors)
-    return item_class  # works only because Item and Action are ordered the same
+    cost_table = get_cost_table()
+    expected_costs = cost_table @ np.asarray(posteriors)
+
+    # instead of only maximizing likelihood
+    action = int(np.argmin(expected_costs))  # minimize expected cost
+    return action  # works only because Item and Action are ordered the same
 
 
 # Create Variables object for GTSAM discrete inference
@@ -604,8 +608,9 @@ def sample_thickness_gtsam(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> 
         An int indicating the sampled thickness, the int-thickness
         mapping is given by the Thickness enum.
     """
+    item = sample_item_gtsam() if item_class is None else item_class
     distribution = get_pTT_gtsam()
-    sample = distribution.sample(item_class)
+    sample = distribution.sample(item)
     return sample
 
 
@@ -634,7 +639,7 @@ def get_pRT_gtsam() -> gtsam.DiscreteConditional:
     return pRT
 
 
-def sample_rigidity_gtsam(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> Literal[0, 1, 2]:
+def sample_rigidity_gtsam(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> Literal[0, 1]:
     """
     Samples the rigidity given the item class using GTSAM.
 
@@ -643,8 +648,9 @@ def sample_rigidity_gtsam(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> L
     int
         The sampled rigidity value.
     """
+    item = sample_item_gtsam() if item_class is None else item_class
     distribution = get_pRT_gtsam()
-    sample = distribution.sample(item_class)
+    sample = distribution.sample(item)
     return sample
 
 
@@ -663,10 +669,10 @@ def get_pMT_gtsam() -> gtsam.DiscreteConditional:
         MaterialVar,
         [Class],
         (
-            "0.95/0.02/0.03"  # 3D Printed Product
-            "0.05/0.85/0.1"  # Structural Bracing
-            "0.05/0.35/0.6"  # PCB Board
-            "0.8/0.15/0.05"  # Wing Component
+            "0.95/0.02/0.03 "  # 3D Printed Product
+            "0.05/0.85/0.1 "  # Structural Bracing
+            "0.05/0.35/0.6 "  # PCB Board
+            "0.8/0.15/0.05 "  # Wing Component
             "0.1/0.85/0.05"  # Motor
         ),
     )
@@ -682,8 +688,9 @@ def sample_material_gtsam(item_class: Literal[0, 1, 2, 3, 4] | None = None) -> L
     int
         The sampled material value.
     """
+    item = sample_item_gtsam() if item_class is None else item_class
     distribution = get_pMT_gtsam()
-    sample = distribution.sample(item_class)
+    sample = distribution.sample(item)
     return sample
 
 
@@ -739,14 +746,14 @@ def bayes_given_weight(weight: float) -> list[float]:
     prior = get_item_prior_gtsam()
 
     likelihoods = likelihood_given_weight(weight)
-    likelikhood_factor = gtsam.DecisionTreeFactor(
+    likelihood_factor = gtsam.DecisionTreeFactor(
         Class,
         likelihoods,
     )  # P(Weight | Class) for each class using likelihoods
 
     # likelihood of weight for each class * probability of that class existing
     # DiscreteDistribution is the normalization step
-    posterior = gtsam.DiscreteDistribution(likelikhood_factor * prior)
+    posterior = gtsam.DiscreteDistribution(likelihood_factor * prior)
 
     return list(posterior.pmf())
 
