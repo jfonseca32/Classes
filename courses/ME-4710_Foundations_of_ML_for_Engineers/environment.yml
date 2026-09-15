@@ -12,6 +12,7 @@ dependencies:
   - pandas
   - matplotlib
   - openpyxl
+  - scikit-learn
   - ipywidgets
   - pip
   - setuptools<82
