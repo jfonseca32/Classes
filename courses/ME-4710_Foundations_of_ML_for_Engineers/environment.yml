@@ -18,3 +18,4 @@ dependencies:
   - setuptools<82
   - pip:
       - ydata-profiling==4.18.4
+      - jax
