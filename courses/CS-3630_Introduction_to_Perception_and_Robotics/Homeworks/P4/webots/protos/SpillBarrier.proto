@@ -1,0 +1,279 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: the obstacle dropped on the robot's path by the "O" chaos
+# button. A toppled pallet with spilled cartons and a puddle, two traffic
+# cones, an A-frame caution sign with an amber flasher, and a hazard-striped
+# frame painted around the blocked grid cell. Everything fits inside the 1 m x
+# 1 m cell centered on the origin (the engine's obstacle is exactly one cell,
+# wm/core/config.py OBSTACLE_HALF_SIZE = 0.5), so the robot never visibly
+# drives into it. Purely visual (no bounding object): the engine adds the cell
+# to its obstacle map and re-plans with value iteration.
+# `flasher` (plain exposed field, cheap to animate) is the emissive intensity
+# of the amber warning light.
+# template language: javascript
+
+PROTO SpillBarrier [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "spill barrier"
+  field SFFloat    flasher      3              # Emissive intensity of the amber warning light.
+]
+{
+  %<
+    const f = (v) => (Math.abs(v) < 5e-5 ? '0' : v.toFixed(4));
+    const FACES = [[0, 3, 2, 1], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [3, 0, 4, 7], [1, 2, 6, 5]];
+    function newMesh() { return { p: [], i: [], t: [], ti: [] }; }
+    // Box of half sizes (hx, hy, hz) centered at c, turned by yaw about z, then tilted by tilt about x.
+    function tiltedBox(m, c, hx, hy, hz, yaw, tilt) {
+      const b = m.p.length, cy = Math.cos(yaw), sy = Math.sin(yaw), ct = Math.cos(tilt), st = Math.sin(tilt);
+      for (const s of [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]]) {
+        const x = s[0] * hx, y1 = s[1] * hy * ct - s[2] * hz * st, z1 = s[1] * hy * st + s[2] * hz * ct;
+        m.p.push(f(c[0] + x * cy - y1 * sy) + ' ' + f(c[1] + x * sy + y1 * cy) + ' ' + f(c[2] + z1));
+      }
+      for (const q of FACES) {
+        m.i.push((b + q[0]) + ' ' + (b + q[1]) + ' ' + (b + q[2]) + ' ' + (b + q[3]) + ' -1');
+        m.ti.push('0 1 2 3 -1');
+      }
+    }
+    // Surface of revolution about the vertical axis through c (profile: [radius, height] from bottom to top).
+    function lathe(m, profile, c, n) {
+      const base = m.p.length;
+      for (let s = 0; s < n; ++s) {
+        const a = 2 * Math.PI * s / n;
+        for (const q of profile)
+          m.p.push(f(c[0] + q[0] * Math.cos(a)) + ' ' + f(c[1] + q[0] * Math.sin(a)) + ' ' + f(c[2] + q[1]));
+      }
+      const np = profile.length;
+      for (let s = 0; s < n; ++s)
+        for (let k = 0; k < np - 1; ++k) {
+          const s2 = (s + 1) % n;
+          m.i.push((base + s * np + k) + ' ' + (base + s2 * np + k) + ' ' + (base + s2 * np + k + 1) + ' ' + (base + s * np + k + 1) + ' -1');
+        }
+    }
+    // Flat quad on the floor with texture coordinates (counterclockwise from above).
+    function floorQuad(m, x0, y0, x1, y1, z, tu, tv) {
+      const b = m.p.length, t = m.t.length;
+      for (const q of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]])
+        m.p.push(f(q[0]) + ' ' + f(q[1]) + ' ' + f(z));
+      for (const q of [[0, 0], [tu, 0], [tu, tv], [0, tv]])
+        m.t.push(f(q[0]) + ' ' + f(q[1]));
+      m.i.push(b + ' ' + (b + 1) + ' ' + (b + 2) + ' ' + (b + 3) + ' -1');
+      m.ti.push(t + ' ' + (t + 1) + ' ' + (t + 2) + ' ' + (t + 3) + ' -1');
+    }
+    const emitUnit = (m) => 'coord Coordinate { point [ ' + m.p.join(', ') + ' ] } coordIndex [ ' + m.i.join(' ') + ' ]' +
+      ' texCoord TextureCoordinate { point [ 0 0, 1 0, 1 1, 0 1 ] } texCoordIndex [ ' + m.ti.join(' ') + ' ]';
+    const emitPlain = (m) => 'coord Coordinate { point [ ' + m.p.join(', ') + ' ] } coordIndex [ ' + m.i.join(' ') + ' ]';
+    const emitTex = (m) => emitPlain(m) + ' texCoord TextureCoordinate { point [ ' + m.t.join(', ') + ' ] } texCoordIndex [ ' + m.ti.join(' ') + ' ]';
+
+    // Hazard frame around the cell: four striped strips, 7 cm wide.
+    const frame = newMesh(), H = 0.5, W = 0.07, Z = 0.01;  // 1 cm up: no z-fighting from high cameras
+    floorQuad(frame, -H, -H, H, -H + W, Z, 1.0 / 0.25, W / 0.25);
+    floorQuad(frame, -H, H - W, H, H, Z, 1.0 / 0.25, W / 0.25);
+    floorQuad(frame, -H, -H + W, -H + W, H - W, Z, W / 0.25, (1 - 2 * W) / 0.25);
+    floorQuad(frame, H - W, -H + W, H, H - W, Z, W / 0.25, (1 - 2 * W) / 0.25);
+
+    // The toppled pallet: deck, three runners, propped on a carton.
+    const pallet = newMesh(), cartons = newMesh();
+    const tilt = 0.3, yaw = 0.35, pc = [-0.02, 0.06, 0.15];
+    tiltedBox(pallet, pc, 0.34, 0.27, 0.018, yaw, tilt);
+    for (const dx of [-0.29, 0, 0.29]) {
+      const c = [pc[0] + dx * Math.cos(yaw) + 0.05 * Math.sin(yaw) * Math.sin(tilt),
+                 pc[1] + dx * Math.sin(yaw) - 0.05 * Math.cos(yaw) * Math.sin(tilt), pc[2] - 0.05 * Math.cos(tilt)];
+      tiltedBox(pallet, c, 0.045, 0.27, 0.035, yaw, tilt);
+    }
+    // Spilled cartons: [x, y, z, half sizes..., yaw, tilt].
+    const spilled = [[0.2, -0.16, 0.13, 0.15, 0.12, 0.13, 0.5, 0.0], [-0.24, -0.2, 0.11, 0.12, 0.11, 0.11, -0.3, 0.25],
+                     [0.12, 0.28, 0.33, 0.12, 0.1, 0.09, 0.9, 0.35], [0.3, 0.12, 0.07, 0.09, 0.08, 0.07, 1.2, 0.0]];
+    for (const b of spilled)
+      tiltedBox(cartons, [b[0], b[1], b[2]], b[3], b[4], b[5], b[6], b[7]);
+
+    // Two traffic cones on opposite corners of the cell.
+    const coneOrange = newMesh(), coneWhite = newMesh(), coneBase = newMesh();
+    for (const c of [[-0.37, 0.37], [0.37, 0.37]]) {
+      tiltedBox(coneBase, [c[0], c[1], 0.012], 0.12, 0.12, 0.012, 0, 0);
+      lathe(coneOrange, [[0.105, 0.024], [0.084, 0.2], [0.0005, 0.2]], [c[0], c[1], 0], 20);
+      lathe(coneWhite, [[0.084, 0.2], [0.066, 0.32], [0.0005, 0.32]], [c[0], c[1], 0], 20);
+      lathe(coneOrange, [[0.066, 0.32], [0.012, 0.56], [0.0005, 0.565]], [c[0], c[1], 0], 20);
+    }
+    // Puddle: an irregular glossy blob under the pallet.
+    let puddle = '', pidx = '';
+    const N = 28;
+    for (let k = 0; k < N; ++k) {
+      const a = 2 * Math.PI * k / N;
+      const r = 0.3 + 0.06 * Math.sin(3 * a) + 0.035 * Math.cos(5 * a + 1);
+      puddle += f(-0.06 + r * Math.cos(a) * 1.2) + ' ' + f(-0.08 + r * Math.sin(a)) + ' 0.008, ';
+      pidx += k + ' ';
+    }
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "spill barrier"
+    children [
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColorMap DEF HAZARD_ART ImageTexture {
+            url [
+              "../textures/hazard_stripes.jpg"
+            ]
+          }
+          emissiveColorMap USE HAZARD_ART
+          emissiveIntensity 0.35
+          roughness 0.6
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emitTex(frame) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColor 0.06 0.07 0.09
+          roughness 0.04
+          metalness 0.3
+        }
+        geometry IndexedFaceSet {
+          coord Coordinate {
+            point [ %<= puddle >% ]
+          }
+          coordIndex [ %<= pidx >% -1 ]
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/pallet_side.jpg"
+            ]
+          }
+          roughness 0.9
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emitUnit(pallet) >%
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/cardboard.jpg"
+            ]
+          }
+          roughness 0.85
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emitUnit(cartons) >%
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColor 1 0.33 0.02
+          roughness 0.45
+          metalness 0
+          emissiveColor 1 0.3 0
+          emissiveIntensity 0.2
+        }
+        geometry IndexedFaceSet {
+          %<= emitPlain(coneOrange) >%
+          creaseAngle 1.2
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColor 0.95 0.95 0.95
+          roughness 0.2
+          metalness 0.3
+          emissiveColor 1 1 1
+          emissiveIntensity 0.35
+        }
+        geometry IndexedFaceSet {
+          %<= emitPlain(coneWhite) >%
+          creaseAngle 1.2
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColor 0.05 0.05 0.05
+          roughness 0.8
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emitPlain(coneBase) >%
+        }
+      }
+      # A-frame caution sign with an amber flasher, on the south side of the cell.
+      Pose {
+        translation 0.2 -0.33 0
+        children [
+          Pose {
+            translation 0 -0.06 0.24
+            rotation 1 0 0 -0.24
+            children [
+              DEF CAUTION_BOARD Shape {
+                appearance PBRAppearance {
+                  baseColorMap DEF CAUTION_ART ImageTexture {
+                    url [
+                      "../textures/caution_sign.jpg"
+                    ]
+                  }
+                  emissiveColorMap USE CAUTION_ART
+                  emissiveIntensity 0.35
+                  roughness 0.5
+                  metalness 0
+                }
+                geometry IndexedFaceSet {
+                  coord Coordinate {
+                    point [ -0.17 -0.008 -0.24, 0.17 -0.008 -0.24, 0.17 -0.008 0.1, -0.17 -0.008 0.1,
+                            0.17 0.008 -0.24, -0.17 0.008 -0.24, -0.17 0.008 0.1, 0.17 0.008 0.1 ]
+                  }
+                  texCoord TextureCoordinate {
+                    point [ 0 0, 1 0, 1 1, 0 1 ]
+                  }
+                  coordIndex [ 0 1 2 3 -1 4 5 6 7 -1 ]
+                  texCoordIndex [ 0 1 2 3 -1 0 1 2 3 -1 ]
+                }
+              }
+            ]
+          }
+          Pose {
+            rotation 0 0 1 3.14159
+            children [
+              Pose {
+                translation 0 -0.06 0.24
+                rotation 1 0 0 -0.24
+                children [
+                  USE CAUTION_BOARD
+                ]
+              }
+            ]
+          }
+          Pose {
+            translation 0 0 0.43
+            children [
+              Shape {
+                castShadows FALSE
+                appearance PBRAppearance {
+                  baseColor 0.6 0.35 0.02
+                  roughness 0.2
+                  metalness 0
+                  emissiveColor 1 0.55 0.05
+                  emissiveIntensity IS flasher
+                }
+                geometry Sphere {
+                  radius 0.035
+                  subdivision 2
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

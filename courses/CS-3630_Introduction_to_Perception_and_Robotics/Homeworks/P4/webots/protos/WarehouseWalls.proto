@@ -1,0 +1,375 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: the four walls of the 100 m x 50 m warehouse.
+# World frame (the PROTO is meant to stay at the origin): the inner faces are
+# at x = -0.5, x = 99.5, y = -0.5, and y = 49.5 (the floor edges of the book's
+# map); the walls are 0.3 m thick and rise from the yard (z = -1.2) to a
+# parapet at z = 10.8. Inside: a precast concrete wainscot up to 2.4 m with a
+# yellow line, ribbed steel cladding above, high windows, navy steel pilasters
+# with yellow guards, and personnel doors. The east wall has the three dock
+# openings (3.2 m x 3.6 m) centered at y = 10, 25, and 40 for LoadingDock.
+# Walls do not cast shadows (the lighting is "through the skylights").
+# template language: javascript
+
+PROTO WarehouseWalls [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "warehouse walls"
+  field SFFloat    windowGlow   1.1       # Emissive intensity of the high windows.
+]
+{
+  %<
+    const f = (v) => (Math.abs(v) < 5e-5 ? '0' : v.toFixed(3));
+    function newMesh() { return { p: [], i: [], t: [], ti: [] }; }
+    function quad(m, a, b, c, d, ta, tb, tc, td) {
+      const i0 = m.p.length, t0 = m.t.length;
+      for (const q of [a, b, c, d]) m.p.push(f(q[0]) + ' ' + f(q[1]) + ' ' + f(q[2]));
+      for (const q of [ta, tb, tc, td]) m.t.push(f(q[0]) + ' ' + f(q[1]));
+      m.i.push(i0 + ' ' + (i0 + 1) + ' ' + (i0 + 2) + ' ' + (i0 + 3) + ' -1');
+      m.ti.push(t0 + ' ' + (t0 + 1) + ' ' + (t0 + 2) + ' ' + (t0 + 3) + ' -1');
+    }
+    const FACES = [[0, 3, 2, 1], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [3, 0, 4, 7], [1, 2, 6, 5]];
+    function box(m, x0, x1, y0, y1, z0, z1) {
+      const b = m.p.length;
+      for (const c of [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]])
+        m.p.push(f(c[0]) + ' ' + f(c[1]) + ' ' + f(c[2]));
+      for (const q of FACES)
+        m.i.push((b + q[0]) + ' ' + (b + q[1]) + ' ' + (b + q[2]) + ' ' + (b + q[3]) + ' -1');
+    }
+    function emit(m) {
+      let s = 'coord Coordinate { point [ ' + m.p.join(', ') + ' ] } coordIndex [ ' + m.i.join(' ') + ' ]';
+      if (m.t.length && m.ti.length === m.i.length)  // only meshes whose every face is textured
+        s += ' texCoord TextureCoordinate { point [ ' + m.t.join(', ') + ' ] } texCoordIndex [ ' + m.ti.join(' ') + ' ]';
+      return s;
+    }
+
+    // A wall is described by its run axis and the side of the building it faces.
+    //   pos(s, d, z): world point at run coordinate s, depth d (0 = inner face,
+    //   positive toward the outside), height z. inward: sign such that the inner
+    //   face is seen counterclockwise. Texture u follows s as seen from each side.
+    const T = 0.3, ZTOP_IN = 10.6, ZTOP_OUT = 10.8, ZYARD = -1.2;
+    const walls = [
+      { name: 'south', s0: -0.8, s1: 99.8, pos: (s, d, z) => [s, -0.5 - d, z], flip: false },
+      { name: 'north', s0: -0.8, s1: 99.8, pos: (s, d, z) => [s, 49.5 + d, z], flip: true },
+      { name: 'west', s0: -0.5, s1: 49.5, pos: (s, d, z) => [-0.5 - d, s, z], flip: true },
+      { name: 'east', s0: -0.5, s1: 49.5, pos: (s, d, z) => [99.5 + d, s, z], flip: false },
+    ];
+    const DOCKS = [10, 25, 40];
+    const openings = { east: DOCKS.map((y) => [y - 1.6, y + 1.6, 3.6]) };
+    const winCenters = {
+      south: [4.5, 14.5, 24.5, 34.5, 64.5, 74.5, 84.5, 94.5],
+      north: [4.5, 14.5, 24.5, 34.5, 44.5, 54.5, 64.5, 74.5, 84.5, 94.5],
+      west: [4.5, 14.5, 24.5, 34.5, 44.5],
+      east: [17.5, 32.5],
+    };
+    // Pilasters stand between the windows and leave room for the wall banners
+    // (west: y = 4.5, 24.5, 44.5; east: y = 17.5, 32.5) and the dock hardware.
+    const pilasters = {
+      south: [9.5, 19.5, 29.5, 39.5, 49.5, 59.5, 69.5, 79.5, 89.5],
+      north: [9.5, 19.5, 29.5, 39.5, 49.5, 59.5, 69.5, 79.5, 89.5],
+      west: [9.5, 19.5, 29.5, 39.5],
+      east: [4.5, 13.0, 22.0, 28.0, 37.0, 45.5],
+    };
+    const doors = { west: [31.2], south: [45.0], north: [30.0] };
+
+    const cladIn = newMesh(), wainscot = newMesh(), cladOut = newMesh(), plinth = newMesh();
+    const trim = newMesh(), windows = newMesh(), navy = newMesh(), yellow = newMesh(), doorPanels = newMesh(), glass = newMesh();
+
+    // Face of a wall region [sa, sb] x [za, zb] at depth d. `outward` selects the
+    // side it is seen from. The texture tiles every (tu, tv) meters in world
+    // units, or exactly covers the face once when `fit` is true.
+    function face(m, w, sa, sb, za, zb, d, outward, tu, tv, fit) {
+      // Counterclockwise as seen from the viewer: swap the run direction for one side.
+      const leftToRight = (outward !== w.flip);
+      const s1 = leftToRight ? sa : sb, s2 = leftToRight ? sb : sa;
+      let u1 = 0, u2 = 1, v1 = 0, v2 = 1;
+      if (!fit) {
+        u1 = leftToRight ? sa / tu : -sb / tu;
+        u2 = leftToRight ? sb / tu : -sa / tu;
+        v1 = za / tv;
+        v2 = zb / tv;
+      }
+      quad(m, w.pos(s1, d, za), w.pos(s2, d, za), w.pos(s2, d, zb), w.pos(s1, d, zb),
+           [u1, v1], [u2, v1], [u2, v2], [u1, v2]);
+    }
+    // Split [s0, s1] around openings reaching up to height zc.
+    function spans(w, zc) {
+      const ops = (openings[w.name] || []).filter((o) => o[2] > zc - 1e-6);
+      const out = [];
+      let s = w.s0;
+      for (const o of ops) {
+        out.push([s, o[0]]);
+        s = o[1];
+      }
+      out.push([s, w.s1]);
+      return out;
+    }
+
+    for (const w of walls) {
+      const hasOpenings = (openings[w.name] || []).length > 0;
+      // Inner face: wainscot 0-2.4 (concrete), yellow line, cladding above.
+      const bands = hasOpenings ? [[0, 2.3, wainscot, 3, 2.4], [2.3, 2.4, yellow, 1, 1], [2.4, 3.6, cladIn, 2, 2], [3.6, ZTOP_IN, cladIn, 2, 2]]
+                                : [[0, 2.3, wainscot, 3, 2.4], [2.3, 2.4, yellow, 1, 1], [2.4, ZTOP_IN, cladIn, 2, 2]];
+      const si0 = (w.name === 'south' || w.name === 'north') ? -0.5 : w.s0;
+      const si1 = (w.name === 'south' || w.name === 'north') ? 99.5 : w.s1;
+      for (const b of bands)
+        for (const sp of spans(w, b[1]))
+          face(b[2], w, Math.max(sp[0], si0), Math.min(sp[1], si1), b[0], b[1], 0, false, b[3], b[4]);
+      // Outer face: concrete plinth from the yard, cladding above.
+      const obands = hasOpenings ? [[ZYARD, 0, plinth, 3, 2.4], [0, 0.3, plinth, 3, 2.4], [0.3, 3.6, cladOut, 2, 2], [3.6, ZTOP_OUT, cladOut, 2, 2]]
+                                 : [[ZYARD, 0.3, plinth, 3, 2.4], [0.3, ZTOP_OUT, cladOut, 2, 2]];
+      const so0 = (w.name === 'west' || w.name === 'east') ? -0.5 : w.s0;
+      const so1 = (w.name === 'west' || w.name === 'east') ? 49.5 : w.s1;
+      for (const b of obands)
+        for (const sp of spans(w, b[1]))
+          face(b[2], w, Math.max(sp[0], so0), Math.min(sp[1], so1), b[0], b[1], T, true, b[3], b[4]);
+      // Top of the parapet.
+      const a = w.pos(w.s0, 0, ZTOP_IN), c = w.pos(w.s1, T, ZTOP_OUT);
+      box(trim, Math.min(a[0], c[0]), Math.max(a[0], c[0]), Math.min(a[1], c[1]), Math.max(a[1], c[1]), ZTOP_IN, ZTOP_OUT + 0.05);
+      // Reveals of the openings (jambs and head) across the wall thickness.
+      for (const o of (openings[w.name] || [])) {
+        for (const s of [o[0], o[1]]) {
+          const p0 = w.pos(s, 0, 0), p1 = w.pos(s, T, o[2]);
+          box(trim, Math.min(p0[0], p1[0]) - 0.02, Math.max(p0[0], p1[0]), Math.min(p0[1], p1[1]) - 0.01, Math.max(p0[1], p1[1]) + 0.01, 0, o[2]);
+        }
+        const h0 = w.pos(o[0], 0, o[2]), h1 = w.pos(o[1], T, o[2] + 0.02);
+        box(trim, Math.min(h0[0], h1[0]), Math.max(h0[0], h1[0]), Math.min(h0[1], h1[1]), Math.max(h0[1], h1[1]), o[2], o[2] + 0.02);
+      }
+      // High windows on both faces, with a steel frame.
+      for (const sc of winCenters[w.name]) {
+        face(windows, w, sc - 2.5, sc + 2.5, 7.0, 8.6, -0.012, false, 1, 1, true);
+        face(windows, w, sc - 2.5, sc + 2.5, 7.0, 8.6, T + 0.012, true, 1, 1, true);
+        for (const d of [-0.05, T])
+          for (const zz of [[6.93, 7.0], [8.6, 8.67]]) {
+            const p0 = w.pos(sc - 2.57, d, zz[0]), p1 = w.pos(sc + 2.57, d + 0.05, zz[1]);
+            box(trim, Math.min(p0[0], p1[0]), Math.max(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.max(p0[1], p1[1]), zz[0], zz[1]);
+          }
+      }
+      // Steel pilasters (inside) with yellow guards at the base.
+      for (const sc of pilasters[w.name]) {
+        const p0 = w.pos(sc - 0.18, -0.3, 0), p1 = w.pos(sc + 0.18, 0, ZTOP_IN);
+        box(navy, Math.min(p0[0], p1[0]), Math.max(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.max(p0[1], p1[1]), 0, ZTOP_IN);
+        const g0 = w.pos(sc - 0.24, -0.36, 0), g1 = w.pos(sc + 0.24, 0, 1.1);
+        box(yellow, Math.min(g0[0], g1[0]), Math.max(g0[0], g1[0]), Math.min(g0[1], g1[1]), Math.max(g0[1], g1[1]), 0, 1.1);
+      }
+      // Personnel doors on both faces.
+      for (const sc of (doors[w.name] || [])) {
+        for (const side of [[-0.04, 0, false], [T, T + 0.04, true]]) {
+          const a0 = w.pos(sc - 0.6, side[0], 0), a1 = w.pos(sc + 0.6, side[1], 2.35);
+          box(trim, Math.min(a0[0], a1[0]), Math.max(a0[0], a1[0]), Math.min(a0[1], a1[1]), Math.max(a0[1], a1[1]), 0, 2.35);
+          const dd = side[2] ? side[1] + 0.01 : side[0] - 0.01;
+          face(doorPanels, w, sc - 0.5, sc + 0.5, 0.0, 2.2, dd, side[2], 1, 1, true);
+          face(glass, w, sc - 0.12, sc + 0.12, 1.3, 1.95, side[2] ? dd + 0.002 : dd - 0.002, side[2], 1, 1, true);
+          const b0 = w.pos(sc - 0.42, side[2] ? dd : dd - 0.07, 1.0), b1 = w.pos(sc + 0.42, side[2] ? dd + 0.07 : dd, 1.08);
+          box(trim, Math.min(b0[0], b1[0]), Math.max(b0[0], b1[0]), Math.min(b0[1], b1[1]), Math.max(b0[1], b1[1]), 1.0, 1.08);
+        }
+      }
+      // End faces of the long walls (the building corners).
+      if (w.name === 'south' || w.name === 'north') {
+        for (const s of [w.s0, w.s1]) {
+          const inward = s === w.s0 ? 0.01 : -0.01;  // a thin cap closing the corner
+          const p0 = w.pos(s, 0, ZYARD), p1 = w.pos(s + inward, T, ZTOP_OUT);
+          box(trim, Math.min(p0[0], p1[0]), Math.max(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.max(p0[1], p1[1]), ZYARD, ZTOP_OUT);
+        }
+      }
+    }
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "warehouse walls"
+    children [
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.84 0.86 0.9
+          baseColorMap ImageTexture {
+            url [
+              "../textures/wall_panel.jpg"
+            ]
+            filtering 5
+          }
+          normalMap ImageTexture {
+            url [
+              "../textures/wall_panel_normal.jpg"
+            ]
+            filtering 5
+          }
+          normalMapFactor 0.6
+          roughness 0.42
+          metalness 0.55
+        }
+        geometry IndexedFaceSet {
+          %<= emit(cladIn) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.9 0.9 0.92
+          baseColorMap ImageTexture {
+            url [
+              "../textures/concrete_wall.jpg"
+            ]
+            filtering 5
+          }
+          roughness 0.85
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(wainscot) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.36 0.42 0.52
+          baseColorMap ImageTexture {
+            url [
+              "../textures/wall_panel.jpg"
+            ]
+            filtering 5
+          }
+          normalMap ImageTexture {
+            url [
+              "../textures/wall_panel_normal.jpg"
+            ]
+            filtering 5
+          }
+          normalMapFactor 0.6
+          roughness 0.45
+          metalness 0.5
+        }
+        geometry IndexedFaceSet {
+          %<= emit(cladOut) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.78 0.78 0.8
+          baseColorMap ImageTexture {
+            url [
+              "../textures/concrete_wall.jpg"
+            ]
+            filtering 5
+          }
+          roughness 0.9
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(plinth) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.17 0.18 0.2
+          roughness 0.4
+          metalness 0.6
+        }
+        geometry IndexedFaceSet {
+          %<= emit(trim) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.0 0.19 0.34
+          roughness 0.4
+          metalness 0.4
+        }
+        geometry IndexedFaceSet {
+          %<= emit(navy) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.97 0.74 0.05
+          roughness 0.45
+          metalness 0.1
+        }
+        geometry IndexedFaceSet {
+          %<= emit(yellow) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.45 0.5 0.58
+          roughness 0.35
+          metalness 0.5
+        }
+        geometry IndexedFaceSet {
+          %<= emit(doorPanels) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.05 0.07 0.1
+          roughness 0.05
+          metalness 0.5
+        }
+        geometry IndexedFaceSet {
+          %<= emit(glass) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColorMap DEF WINDOW_ART ImageTexture {
+            url [
+              "../textures/window_glass.jpg"
+            ]
+          }
+          emissiveColorMap USE WINDOW_ART
+          emissiveIntensity IS windowGlow
+          roughness 0.1
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(windows) >%
+        }
+      }
+    ]
+    boundingObject Group {
+      children [
+        Pose {
+          translation 49.5 -0.65 4.8
+          children [
+            Box {
+              size 100.6 0.3 12
+            }
+          ]
+        }
+        Pose {
+          translation 49.5 49.65 4.8
+          children [
+            Box {
+              size 100.6 0.3 12
+            }
+          ]
+        }
+        Pose {
+          translation -0.65 24.5 4.8
+          children [
+            Box {
+              size 0.3 50 12
+            }
+          ]
+        }
+        Pose {
+          translation 99.65 24.5 4.8
+          children [
+            Box {
+              size 0.3 50 12
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

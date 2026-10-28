@@ -1,0 +1,121 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: a floating goal marker (pickup slot or shipping dock).
+# The origin is the goal point on the floor: a glowing ground ring, a
+# translucent light beam, and a faceted arrowhead floating above it, pointing
+# down. The engine moves it (translation), spins it (rotation about z), and may
+# recolor it through `color` (a plain exposed field: no regeneration).
+# Nothing here casts shadows or can be picked with the mouse.
+# template language: javascript
+
+PROTO GoalMarker [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFColor    color        1 0.82 0.1      # Emissive color (yellow = goal, see DESIGN section 7).
+  field SFFloat    height       2.4             # Height of the arrowhead tip above the floor.
+]
+{
+  %<
+    const f = (v) => (Math.abs(v) < 5e-5 ? '0' : v.toFixed(4));
+    const H = fields.height.value;
+    // Arrowhead: an inverted 4-sided pyramid with a short prism on top.
+    const tip = H - 0.55, top = H, mid = H - 0.18, r = 0.34;
+    const ring = [];
+    for (let k = 0; k < 4; ++k) {
+      const a = Math.PI / 4 + k * Math.PI / 2;
+      ring.push([r * Math.cos(a), r * Math.sin(a)]);
+    }
+    const arrowPts = [f(0) + ' ' + f(0) + ' ' + f(tip)];
+    for (const q of ring) arrowPts.push(f(q[0]) + ' ' + f(q[1]) + ' ' + f(mid));
+    for (const q of ring) arrowPts.push(f(q[0] * 0.55) + ' ' + f(q[1] * 0.55) + ' ' + f(top));
+    // Faces: 4 lower triangles (tip -> ring), 4 side quads (ring -> top ring), top cap.
+    let arrowIdx = '';
+    for (let k = 0; k < 4; ++k) {
+      const a = 1 + k, b = 1 + (k + 1) % 4;
+      arrowIdx += '0 ' + b + ' ' + a + ' -1 ';
+      arrowIdx += a + ' ' + b + ' ' + (b + 4) + ' ' + (a + 4) + ' -1 ';
+    }
+    arrowIdx += '5 6 7 8 -1';
+    // Ground ring: flat annulus.
+    const N = 48, r0 = 0.46, r1 = 0.6, zr = 0.04;  // above the floor hologram plane (z = 0.02)
+    let ringPts = '', ringIdx = '';
+    for (let k = 0; k < N; ++k) {
+      const a = 2 * Math.PI * k / N;
+      ringPts += f(r0 * Math.cos(a)) + ' ' + f(r0 * Math.sin(a)) + ' ' + zr + ', ';
+      ringPts += f(r1 * Math.cos(a)) + ' ' + f(r1 * Math.sin(a)) + ' ' + zr + ', ';
+      const k2 = (k + 1) % N;
+      ringIdx += (2 * k) + ' ' + (2 * k + 1) + ' ' + (2 * k2 + 1) + ' ' + (2 * k2) + ' -1 ';
+    }
+    // Beam: open cylinder from the floor to just under the arrowhead.
+    const beamTop = tip - 0.05, rb = 0.36;
+    let beamPts = '', beamIdx = '';
+    for (let k = 0; k < N; ++k) {
+      const a = 2 * Math.PI * k / N;
+      beamPts += f(rb * Math.cos(a)) + ' ' + f(rb * Math.sin(a)) + ' 0.03, ';
+      beamPts += f(rb * Math.cos(a)) + ' ' + f(rb * Math.sin(a)) + ' ' + f(beamTop) + ', ';
+      const k2 = (k + 1) % N;
+      // Both windings: IndexedFaceSet faces are single-sided in Webots, and the
+      // beam must be seen from outside and from inside (overhead camera).
+      beamIdx += (2 * k) + ' ' + (2 * k2) + ' ' + (2 * k2 + 1) + ' ' + (2 * k + 1) + ' -1 ';
+      beamIdx += (2 * k) + ' ' + (2 * k + 1) + ' ' + (2 * k2 + 1) + ' ' + (2 * k2) + ' -1 ';
+    }
+  >%
+  Pose {
+    translation IS translation
+    rotation IS rotation
+    children [
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColor 0.1 0.1 0.1
+          roughness 0.3
+          metalness 0
+          emissiveColor IS color
+          emissiveIntensity 3
+        }
+        geometry IndexedFaceSet {
+          coord Coordinate {
+            point [ %<= arrowPts.join(', ') >% ]
+          }
+          coordIndex [ %<= arrowIdx >% ]
+        }
+      }
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColor 0 0 0
+          roughness 1
+          metalness 0
+          emissiveColor IS color
+          emissiveIntensity 2.5
+          transparency 0.15
+        }
+        geometry IndexedFaceSet {
+          coord Coordinate {
+            point [ %<= ringPts >% ]
+          }
+          coordIndex [ %<= ringIdx >% ]
+        }
+      }
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColor 0 0 0
+          roughness 1
+          metalness 0
+          emissiveColor IS color
+          emissiveIntensity 1.2
+          transparency 0.82
+        }
+        geometry IndexedFaceSet {
+          coord Coordinate {
+            point [ %<= beamPts >% ]
+          }
+          coordIndex [ %<= beamIdx >% ]
+        }
+      }
+    ]
+  }
+}

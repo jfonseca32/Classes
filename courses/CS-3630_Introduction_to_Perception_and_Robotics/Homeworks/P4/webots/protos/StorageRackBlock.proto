@@ -1,0 +1,399 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: one 9 m x 30 m block of pallet racking (a "shelf" of the
+# book's warehouse map, Section 4.1). The origin is the center of the block on
+# the floor; x spans the 9 m width and y the 30 m length.
+#
+# Layout (x): west row [-4.5, -3.4] | service aisle | back-to-back double row
+# [-1.15, 1.15] | service aisle | east row [3.4, 4.5]. Ten 3 m bays along y and
+# four levels with deck tops at z = 0.40, 1.65, 2.90, and 4.15 m. The lowest
+# level of the two outer rows holds the pick slots: slot s (1..10) is the free
+# spot at the bay center y = -16.5 + 3 s (block frame), marked with a yellow
+# frame on the deck and a plate "<letter><s:02d>" on the beam below it. An
+# order parcel placed there sits at z = 0.40 m, about 0.32 m inside the face.
+#
+# The stored goods (cardboard, totes, shrink-wrapped pallets) are generated
+# from `seed` and merged into a few IndexedFaceSets, so a block costs about
+# fifteen Shapes. The ends of the service aisles are closed by barriers: robots
+# only use the outer faces, exactly like the obstacle map of the book.
+# template language: javascript
+
+PROTO StorageRackBlock [
+  field SFVec3f    translation  24 24.5 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "rack block"
+  field SFString   letter       "A"          # Block letter A-D (slot plates A01..A10).
+  field SFInt32    seed         1            # Varies the stored goods.
+]
+{
+  %<
+    // --------------------------------------------------------------------
+    // Deterministic random numbers (mulberry32).
+    // --------------------------------------------------------------------
+    const letters = 'ABCD';
+    let letterIndex = letters.indexOf(fields.letter.value.toUpperCase());
+    if (letterIndex < 0) {
+      console.error('StorageRackBlock: letter must be one of A, B, C, D.');
+      letterIndex = 0;
+    }
+    let state = (fields.seed.value * 7919 + letterIndex * 104729 + 17) >>> 0;
+    function rand() {
+      state = (state + 0x6D2B79F5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+    const uniform = (a, b) => a + (b - a) * rand();
+    const pick = (list) => list[Math.floor(rand() * list.length) % list.length];
+
+    // --------------------------------------------------------------------
+    // Mesh builders. Every mesh keeps its own point list and face list; a
+    // textured mesh also keeps texture coordinates and indices.
+    // --------------------------------------------------------------------
+    const fmt = (v) => (Math.abs(v) < 5e-4 ? '0' : v.toFixed(3));
+    function newMesh() { return { p: [], i: [], t: [], ti: [] }; }
+    function pt(m, x, y, z) { m.p.push(fmt(x) + ' ' + fmt(y) + ' ' + fmt(z)); return m.p.length - 1; }
+    // Corners 0..7 of a box in a right-handed frame (u, v, w) around center c.
+    const FACES = [[0, 3, 2, 1], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [3, 0, 4, 7], [1, 2, 6, 5]];
+    function frameBox(m, c, u, v, w, hu, hv, hw, textured, skipBottom) {
+      const b = m.p.length;
+      const signs = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+      for (const s of signs)
+        pt(m, c[0] + s[0] * hu * u[0] + s[1] * hv * v[0] + s[2] * hw * w[0],
+              c[1] + s[0] * hu * u[1] + s[1] * hv * v[1] + s[2] * hw * w[1],
+              c[2] + s[0] * hu * u[2] + s[1] * hv * v[2] + s[2] * hw * w[2]);
+      for (let f = skipBottom ? 1 : 0; f < 6; ++f) {
+        const q = FACES[f];
+        m.i.push((b + q[0]) + ' ' + (b + q[1]) + ' ' + (b + q[2]) + ' ' + (b + q[3]) + ' -1');
+        if (textured)
+          m.ti.push('0 1 2 3 -1');
+      }
+    }
+    const UX = [1, 0, 0], UY = [0, 1, 0], UZ = [0, 0, 1];
+    function box(m, x0, x1, y0, y1, z0, z1, textured, skipBottom) {
+      frameBox(m, [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2], UX, UY, UZ,
+               Math.abs(x1 - x0) / 2, Math.abs(y1 - y0) / 2, Math.abs(z1 - z0) / 2, textured, skipBottom);
+    }
+    // A slender member between two points of the plane y = const.
+    function member(m, xa, za, xb, zb, y, size) {
+      const dx = xb - xa, dz = zb - za, len = Math.sqrt(dx * dx + dz * dz);
+      const u = [dx / len, 0, dz / len];
+      const w = [-u[2], 0, u[0]];  // u x v with v = +y
+      frameBox(m, [(xa + xb) / 2, y, (za + zb) / 2], u, UY, w, len / 2, size / 2, size / 2, false, false);
+    }
+    // A single textured quad with explicit texture coordinates (counterclockwise from the front).
+    function quad(m, a, b, c, d, ta, tb, tc, td) {
+      const i0 = m.p.length, t0 = m.t.length;
+      for (const q of [a, b, c, d]) pt(m, q[0], q[1], q[2]);
+      for (const q of [ta, tb, tc, td]) m.t.push(fmt(q[0]) + ' ' + fmt(q[1]));
+      m.i.push(i0 + ' ' + (i0 + 1) + ' ' + (i0 + 2) + ' ' + (i0 + 3) + ' -1');
+      m.ti.push(t0 + ' ' + (t0 + 1) + ' ' + (t0 + 2) + ' ' + (t0 + 3) + ' -1');
+    }
+    function emit(m, unitTex) {
+      let s = 'coord Coordinate { point [ ' + m.p.join(', ') + ' ] } coordIndex [ ' + m.i.join(' ') + ' ]';
+      if (unitTex)
+        s += ' texCoord TextureCoordinate { point [ 0 0, 1 0, 1 1, 0 1 ] } texCoordIndex [ ' + m.ti.join(' ') + ' ]';
+      else if (m.t.length > 0)
+        s += ' texCoord TextureCoordinate { point [ ' + m.t.join(', ') + ' ] } texCoordIndex [ ' + m.ti.join(' ') + ' ]';
+      return s;
+    }
+
+    // --------------------------------------------------------------------
+    // Racking layout.
+    // --------------------------------------------------------------------
+    const H = 5.4;                                // upright height
+    const LEVELS = [0.40, 1.65, 2.90, 4.15];      // deck tops
+    const POST = 0.09, BEAM_H = 0.11, BEAM_D = 0.05;
+    const ROWS = [
+      { x0: -4.5, x1: -3.4, face: -1, outer: true },
+      { x0: -1.15, x1: -0.1, face: -1, outer: false },
+      { x0: 0.1, x1: 1.15, face: 1, outer: false },
+      { x0: 3.4, x1: 4.5, face: 1, outer: true },
+    ];
+    function frameYs(row) {
+      const ys = [];
+      for (let j = 0; j <= 10; ++j) ys.push(-15 + 3 * j);
+      if (!row.outer) {  // leave a niche at both ends for the RFID beacon pylons
+        ys[0] = -14.55;
+        ys[10] = 14.55;
+      }
+      return ys;
+    }
+
+    const uprights = newMesh(), beams = newMesh(), decks = newMesh();
+    const cardboard = newMesh(), cardboardDark = newMesh(), wrap = newMesh(), pallets = newMesh();
+    const totesBlue = newMesh(), totesGray = newMesh(), yellow = newMesh(), plates = newMesh(), barrier = newMesh();
+
+    function pallet(xc, yc, z, dx, dy) {
+      box(pallets, xc - dx / 2, xc + dx / 2, yc - dy / 2, yc + dy / 2, z, z + 0.14, true, true);
+      return z + 0.14;
+    }
+    function cartons(xa, xb, ya, yb, z, height, allowGaps) {
+      // A grid of cardboard cartons filling [xa, xb] x [ya, yb] up to z + height.
+      const nx = Math.max(1, Math.round((xb - xa) / uniform(0.38, 0.55)));
+      const ny = Math.max(1, Math.round((yb - ya) / uniform(0.35, 0.6)));
+      const layers = Math.max(1, Math.round(height / uniform(0.28, 0.42)));
+      const lh = height / layers;
+      for (let l = 0; l < layers; ++l)
+        for (let a = 0; a < nx; ++a)
+          for (let b = 0; b < ny; ++b) {
+            if (allowGaps && l === layers - 1 && rand() < 0.22) continue;
+            const x0 = xa + (xb - xa) * a / nx, x1 = xa + (xb - xa) * (a + 1) / nx;
+            const y0 = ya + (yb - ya) * b / ny, y1 = ya + (yb - ya) * (b + 1) / ny;
+            const j = 0.012;
+            const target = rand() < 0.35 ? cardboardDark : cardboard;
+            box(target, x0 + uniform(0, j), x1 - uniform(0, j), y0 + uniform(0, j), y1 - uniform(0, j),
+                z + l * lh, z + (l + 1) * lh - 0.004, true, true);
+          }
+    }
+    function totes(xa, xb, ya, yb, z, height) {
+      const target = rand() < 0.55 ? totesBlue : totesGray;
+      const nx = Math.max(1, Math.floor((xb - xa) / 0.42));
+      const ny = Math.max(1, Math.floor((yb - ya) / 0.58));
+      const stack = Math.max(1, Math.min(3, Math.floor(height / 0.31)));
+      for (let a = 0; a < nx; ++a)
+        for (let b = 0; b < ny; ++b) {
+          const n = 1 + Math.floor(rand() * stack);
+          const x0 = xa + (xb - xa) * a / nx + 0.01, x1 = xa + (xb - xa) * (a + 1) / nx - 0.01;
+          const y0 = ya + (yb - ya) * b / ny + 0.01, y1 = ya + (yb - ya) * (b + 1) / ny - 0.01;
+          for (let k = 0; k < n; ++k)
+            box(target, x0, x1, y0, y1, z + k * 0.3, z + k * 0.3 + 0.29, true, true);
+        }
+    }
+    function loadUnit(row, xa, xb, ya, yb, z, maxH) {
+      // One pallet position: pallet + cartons, shrink-wrapped pallet, totes, or empty.
+      const r = rand();
+      const xc = (xa + xb) / 2, yc = (ya + yb) / 2;
+      if (r < 0.14)
+        return;
+      if (r < 0.52) {
+        const top = pallet(xc, yc, z, xb - xa, yb - ya);
+        cartons(xa + 0.02, xb - 0.02, ya + 0.03, yb - 0.03, top, uniform(0.45, maxH - 0.16), true);
+      } else if (r < 0.8) {
+        const top = pallet(xc, yc, z, xb - xa, yb - ya);
+        const h = uniform(0.55, maxH - 0.16);
+        box(wrap, xa + 0.015, xb - 0.015, ya + 0.02, yb - 0.02, top, top + h, true, true);
+      } else
+        totes(xa, xb, ya, yb, z, uniform(0.3, maxH));
+    }
+
+    for (const row of ROWS) {
+      const ys = frameYs(row);
+      const px0 = row.x0 + POST / 2, px1 = row.x1 - POST / 2;
+      // Upright frames: two posts plus zig-zag lacing.
+      for (const y of ys) {
+        box(uprights, row.x0, row.x0 + POST, y - POST / 2, y + POST / 2, 0, H, false, false);
+        box(uprights, row.x1 - POST, row.x1, y - POST / 2, y + POST / 2, 0, H, false, false);
+        member(uprights, px0, 0.15, px1, 0.15, y, 0.035);
+        member(uprights, px0, H - 0.12, px1, H - 0.12, y, 0.035);
+        const n = 6;
+        for (let k = 0; k < n; ++k) {
+          const za = 0.15 + (H - 0.27) * k / n, zb = 0.15 + (H - 0.27) * (k + 1) / n;
+          if (k % 2 === 0)
+            member(uprights, px0, za, px1, zb, y, 0.03);
+          else
+            member(uprights, px1, za, px0, zb, y, 0.03);
+        }
+      }
+      for (let j = 0; j < ys.length - 1; ++j) {
+        const ya = ys[j] + POST / 2, yb = ys[j + 1] - POST / 2, yc = (ys[j] + ys[j + 1]) / 2;
+        for (let l = 0; l < LEVELS.length; ++l) {
+          const zt = LEVELS[l];
+          // Front and back step beams (their top is 1 cm above the deck).
+          box(beams, row.x0 + 0.02, row.x0 + 0.02 + BEAM_D, ya, yb, zt + 0.01 - BEAM_H, zt + 0.01, false, false);
+          box(beams, row.x1 - 0.02 - BEAM_D, row.x1 - 0.02, ya, yb, zt + 0.01 - BEAM_H, zt + 0.01, false, false);
+          // Wire-mesh deck (top and bottom faces, tiled texture).
+          const dx0 = row.x0 + 0.07, dx1 = row.x1 - 0.07;
+          const tu = (dx1 - dx0) / 0.5, tv = (yb - ya) / 0.5;
+          quad(decks, [dx0, ya, zt], [dx1, ya, zt], [dx1, yb, zt], [dx0, yb, zt], [0, 0], [tu, 0], [tu, tv], [0, tv]);
+          quad(decks, [dx0, yb, zt - 0.02], [dx1, yb, zt - 0.02], [dx1, ya, zt - 0.02], [dx0, ya, zt - 0.02],
+               [0, tv], [tu, tv], [tu, 0], [0, 0]);
+          // Stored goods.
+          const maxH = l < LEVELS.length - 1 ? LEVELS[l + 1] - zt - BEAM_H - 0.08 : 1.05;
+          const gx0 = row.x0 + 0.08, gx1 = row.x1 - 0.08;
+          if (l === 0 && row.outer) {
+            // Pick level of an outer face: keep the slot at the bay center free.
+            const side = [[ya + 0.05, yc - 0.5], [yc + 0.5, yb - 0.05]];
+            for (const s of side) {
+              const r = rand();
+              if (r < 0.45)
+                totes(gx0, gx1, s[0], s[1], zt, uniform(0.3, 0.9));
+              else if (r < 0.85)
+                cartons(gx0 + 0.04, gx1 - 0.04, s[0] + 0.03, s[1] - 0.03, zt, uniform(0.3, 0.75), true);
+            }
+            // Yellow tape frame around the pick spot on the deck.
+            const fx = row.face < 0 ? row.x0 + 0.08 : row.x1 - 0.08;
+            const fx2 = fx - row.face * 0.62;
+            const xa = Math.min(fx, fx2), xb = Math.max(fx, fx2);
+            box(yellow, xa, xb, yc - 0.36, yc - 0.33, zt, zt + 0.004, false, true);
+            box(yellow, xa, xb, yc + 0.33, yc + 0.36, zt, zt + 0.004, false, true);
+            box(yellow, row.face < 0 ? xb - 0.03 : xa, row.face < 0 ? xb : xa + 0.03, yc - 0.33, yc + 0.33, zt, zt + 0.004, false, true);
+            // Slot plate on the front beam, facing the aisle.
+            const slot = j + 1;
+            const u0 = (slot - 1) / 10 + 0.002, u1 = slot / 10 - 0.002;
+            const v1 = 1 - letterIndex / 4 - 0.004, v0 = 1 - (letterIndex + 1) / 4 + 0.004;
+            const zb0 = zt + 0.005 - BEAM_H + 0.005, zb1 = zt + 0.005;
+            if (row.face < 0) {
+              const x = row.x0 + 0.014;
+              quad(plates, [x, yc + 0.19, zb0], [x, yc - 0.19, zb0], [x, yc - 0.19, zb1], [x, yc + 0.19, zb1],
+                   [u0, v0], [u1, v0], [u1, v1], [u0, v1]);
+            } else {
+              const x = row.x1 - 0.014;
+              quad(plates, [x, yc - 0.19, zb0], [x, yc + 0.19, zb0], [x, yc + 0.19, zb1], [x, yc - 0.19, zb1],
+                   [u0, v0], [u1, v0], [u1, v1], [u0, v1]);
+            }
+          } else {
+            // Two pallet positions per bay.
+            const half = (yb - ya) / 2;
+            loadUnit(row, gx0, gx1, ya + 0.06, ya + half - 0.04, zt, maxH);
+            loadUnit(row, gx0, gx1, ya + half + 0.04, yb - 0.06, zt, maxH);
+          }
+        }
+      }
+      // End-of-row guards: two yellow posts and two rails at both ends.
+      for (const sgn of [-1, 1]) {
+        const yEnd = sgn * (Math.abs(ys[0]) + 0.16);
+        for (const x of [row.x0 + 0.08, row.x1 - 0.08])
+          box(yellow, x - 0.05, x + 0.05, yEnd - 0.05, yEnd + 0.05, 0, 0.9, false, true);
+        for (const z of [0.32, 0.78])
+          box(yellow, row.x0 + 0.03, row.x1 - 0.03, yEnd - 0.04, yEnd + 0.04, z, z + 0.1, false, false);
+      }
+    }
+    // Column protectors at the four outer corners of the block.
+    for (const x of [-4.45, 4.45])
+      for (const y of [-15, 15])
+        box(yellow, x - 0.13, x + 0.13, y - 0.13, y + 0.13, 0, 0.45, false, true);
+    // Barriers closing the two service aisles at both ends (robots stay out).
+    for (const sgn of [-1, 1]) {
+      const y = sgn * 15.18;
+      for (const seg of [[-3.36, -1.19], [1.19, 3.36]]) {
+        for (const x of seg)
+          box(yellow, x - 0.04, x + 0.04, y - 0.04, y + 0.04, 0, 1.05, false, true);
+        box(yellow, seg[0], seg[1], y - 0.02, y + 0.02, 0.55, 0.85, false, false);
+        // Hazard-striped faces on both sides of the board (texture tiled every 0.3 m).
+        const tu = (seg[1] - seg[0]) / 0.3;
+        quad(barrier, [seg[0], y - 0.021, 0.55], [seg[1], y - 0.021, 0.55], [seg[1], y - 0.021, 0.85],
+             [seg[0], y - 0.021, 0.85], [0, 0], [tu, 0], [tu, 1], [0, 1]);
+        quad(barrier, [seg[1], y + 0.021, 0.55], [seg[0], y + 0.021, 0.55], [seg[0], y + 0.021, 0.85],
+             [seg[1], y + 0.021, 0.85], [0, 0], [tu, 0], [tu, 1], [0, 1]);
+      }
+    }
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "pallet racking block"
+    children [
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.93 0.4 0.07
+          roughness 0.45
+          metalness 0.3
+        }
+        geometry IndexedFaceSet {
+          %<= emit(uprights, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.09 0.3 0.75
+          roughness 0.4
+          metalness 0.35
+        }
+        geometry IndexedFaceSet {
+          %<= emit(beams, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/wire_deck.jpg"
+            ]
+          }
+          roughness 0.45
+          metalness 0.6
+        }
+        geometry IndexedFaceSet {
+          %<= emit(decks, false) >%
+        }
+      }
+      %< const goods = [[cardboard, 'cardboard.jpg', '1 1 1', 0.85], [cardboardDark, 'cardboard_dark.jpg', '1 1 1', 0.85],
+                        [wrap, 'shrinkwrap.jpg', '1 1 1', 0.22], [pallets, 'pallet_side.jpg', '1 1 1', 0.9],
+                        [totesBlue, 'tote.jpg', '0.25 0.45 0.95', 0.5], [totesGray, 'tote.jpg', '0.62 0.64 0.66', 0.5]];
+         for (const g of goods) { if (g[0].p.length === 0) continue; >%
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor %<= g[2] >%
+          baseColorMap ImageTexture {
+            url [
+              "../textures/%<= g[1] >%"
+            ]
+          }
+          roughness %<= g[3] >%
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(g[0], true) >%
+        }
+      }
+      %< } >%
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.97 0.74 0.05
+          roughness 0.4
+          metalness 0.1
+        }
+        geometry IndexedFaceSet {
+          %<= emit(yellow, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/hazard_stripes.jpg"
+            ]
+          }
+          roughness 0.5
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(barrier, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap DEF SLOT_ATLAS ImageTexture {
+            url [
+              "../textures/slot_labels.png"
+            ]
+          }
+          emissiveColorMap USE SLOT_ATLAS
+          emissiveIntensity 0.35
+          roughness 0.5
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(plates, false) >%
+        }
+      }
+    ]
+    boundingObject Pose {
+      translation 0 0 2.7
+      children [
+        Box {
+          size 9 30 5.4
+        }
+      ]
+    }
+  }
+}

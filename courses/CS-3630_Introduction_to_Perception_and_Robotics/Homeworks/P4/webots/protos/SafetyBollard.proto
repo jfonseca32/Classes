@@ -1,0 +1,100 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: a steel safety bollard (yellow, with black bands).
+# The origin is the base on the floor. Height 1.1 m, radius 0.1 m.
+
+PROTO SafetyBollard [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "safety bollard"
+  field SFColor    color        0.97 0.74 0.05
+]
+{
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "safety bollard"
+    children [
+      Pose {
+        translation 0 0 0.55
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.35
+              metalness 0.2
+            }
+            geometry Cylinder {
+              height 1.1
+              radius 0.1
+              subdivision 20
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 1.1
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS color
+              roughness 0.35
+              metalness 0.2
+            }
+            geometry Sphere {
+              radius 0.1
+              subdivision 2
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.72
+        children [
+          DEF BAND Shape {
+            appearance PBRAppearance {
+              baseColor 0.04 0.04 0.05
+              roughness 0.4
+              metalness 0.1
+            }
+            geometry Cylinder {
+              height 0.08
+              radius 0.1015
+              subdivision 20
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.9
+        children [
+          USE BAND
+        ]
+      }
+      Pose {
+        translation 0 0 0.01
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.3 0.31 0.33
+              roughness 0.5
+              metalness 0.6
+            }
+            geometry Box {
+              size 0.3 0.3 0.02
+            }
+          }
+        ]
+      }
+    ]
+    boundingObject Pose {
+      translation 0 0 0.55
+      children [
+        Cylinder {
+          height 1.1
+          radius 0.1
+        }
+      ]
+    }
+  }
+}

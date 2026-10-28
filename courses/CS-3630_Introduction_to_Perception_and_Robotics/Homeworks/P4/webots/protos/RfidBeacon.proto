@@ -1,0 +1,177 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: an RFID beacon pylon at one end of a shelf block
+# (book Section 4.3.2; the eight beacons of gtbook.logistics.beacons).
+# The origin is the beacon position on the floor: the middle of the block end,
+# on the block's edge. The rack lies toward local +y, and the pylon stands
+# 0.2 m inside the block footprint (in the niche that StorageRackBlock leaves
+# at both ends), so nothing protrudes into the robot's free space. The
+# numbered plate faces local -y (rotate by pi for the beacons at the north ends).
+#
+# Engine hooks: GLOW_MATERIAL (PBRAppearance of the ring, dome, and floor
+# halo) has emissiveColor <- glowColor and emissiveIntensity <- glowIntensity.
+# Write the PROTO fields directly, or use
+#   beacon.getFromProtoDef("GLOW_MATERIAL").getField("emissiveColor").getActualField().
+# template language: javascript
+
+PROTO RfidBeacon [
+  field SFVec3f    translation    24 9.5 0
+  field SFRotation rotation       0 0 1 0
+  field SFString   name           "rfid beacon"
+  field SFInt32    beaconId       0             # 0..7: the number printed on the plate.
+  field SFColor    glowColor      0 0.85 1      # Emissive color of the glowing parts.
+  field SFFloat    glowIntensity  2.5           # Emissive intensity of the glowing parts.
+]
+{
+  %<
+    const fmt = (v) => (Math.abs(v) < 5e-5 ? '0' : v.toFixed(4));
+    function newMesh() { return { p: [], i: [] }; }
+    function lathe(m, profile, cz, n) {  // surface of revolution about the local z axis
+      const base = m.p.length;
+      for (let s = 0; s < n; ++s) {
+        const a = 2 * Math.PI * s / n;
+        for (const q of profile)
+          m.p.push(fmt(q[0] * Math.cos(a)) + ' ' + fmt(q[0] * Math.sin(a)) + ' ' + fmt(cz + q[1]));
+      }
+      const np = profile.length;
+      for (let s = 0; s < n; ++s)
+        for (let k = 0; k < np - 1; ++k) {
+          const s2 = (s + 1) % n;
+          m.i.push((base + s * np + k) + ' ' + (base + s2 * np + k) + ' ' + (base + s2 * np + k + 1) + ' ' + (base + s * np + k + 1) + ' -1');
+        }
+    }
+    function torus(rc, zc, rad, n) {
+      const pts = [];
+      for (let k = 0; k <= n; ++k) {
+        const t = -Math.PI / 2 + 2 * Math.PI * k / n;
+        pts.push([rc + rad * Math.cos(t), zc + rad * Math.sin(t)]);
+      }
+      return pts;
+    }
+    const emit = (m) => 'coord Coordinate { point [ ' + m.p.join(', ') + ' ] } coordIndex [ ' + m.i.join(' ') + ' ]';
+
+    const metal = newMesh(), glow = newMesh(), dome = newMesh(), halo = newMesh();
+    // Pylon, lantern collar, and antenna (metal); two glowing rings, the translucent
+    // lantern, the antenna tip, and a halo ring on the floor (GLOW_MATERIAL).
+    lathe(metal, [[0.0005, 0], [0.19, 0], [0.2, 0.01], [0.2, 0.03], [0.07, 0.035], [0.055, 0.05], [0.055, 1.72],
+                  [0.09, 1.74], [0.09, 1.77], [0.0005, 1.77]], 0, 32);
+    lathe(metal, [[0.0005, 1.96], [0.09, 1.96], [0.09, 1.985], [0.014, 2.0], [0.006, 2.0], [0.006, 2.3],
+                  [0.0005, 2.3]], 0, 24);
+    lathe(glow, torus(0.14, 1.79, 0.028, 12), 0, 40);
+    lathe(glow, torus(0.12, 1.93, 0.02, 10), 0, 40);
+    lathe(glow, [[0.0005, 2.29], [0.018, 2.295], [0.024, 2.315], [0.018, 2.335], [0.0005, 2.34]], 0, 16);
+    lathe(dome, [[0.0005, 1.77], [0.085, 1.77], [0.087, 1.86], [0.08, 1.94], [0.0005, 1.96]], 0, 32);
+    lathe(halo, torus(0.32, 0.006, 0.012, 6), 0, 64);
+    const row = Math.max(0, Math.min(7, fields.beaconId.value));
+    const v0 = 1 - (row + 1) / 8 + 0.003, v1 = 1 - row / 8 - 0.003;
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "RFID beacon"
+    children [
+      Pose {
+        translation 0 0.2 0
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.16 0.17 0.2
+              roughness 0.35
+              metalness 0.7
+            }
+            geometry IndexedFaceSet {
+              %<= emit(metal) >%
+              creaseAngle 0.8
+            }
+          }
+          Shape {
+            castShadows FALSE
+            appearance DEF GLOW_MATERIAL PBRAppearance {
+              baseColor 0.05 0.1 0.12
+              roughness 0.2
+              metalness 0
+              emissiveColor IS glowColor
+              emissiveIntensity IS glowIntensity
+            }
+            geometry IndexedFaceSet {
+              %<= emit(glow) >%
+              creaseAngle 1.6
+            }
+          }
+          Shape {
+            castShadows FALSE
+            appearance USE GLOW_MATERIAL
+            geometry IndexedFaceSet {
+              %<= emit(halo) >%
+              creaseAngle 1.6
+            }
+          }
+          Shape {
+            castShadows FALSE
+            appearance PBRAppearance {
+              baseColor 0.85 0.95 1
+              roughness 0.15
+              metalness 0
+              transparency 0.25
+              emissiveColor IS glowColor
+              emissiveIntensity 0.8
+            }
+            geometry IndexedFaceSet {
+              %<= emit(dome) >%
+              creaseAngle 1.2
+            }
+          }
+          # Plate housing and the numbered plate (facing local -y, away from the rack).
+          Pose {
+            translation 0 -0.06 1.12
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.1 0.11 0.13
+                  roughness 0.4
+                  metalness 0.5
+                }
+                geometry Box {
+                  size 0.42 0.06 0.23
+                }
+              }
+            ]
+          }
+          Shape {
+            castShadows FALSE
+            appearance PBRAppearance {
+              baseColorMap DEF RFID_ATLAS ImageTexture {
+                url [
+                  "../textures/rfid_plates.png"
+                ]
+              }
+              emissiveColorMap USE RFID_ATLAS
+              emissiveIntensity 0.6
+              roughness 0.4
+              metalness 0
+            }
+            geometry IndexedFaceSet {
+              coord Coordinate {
+                point [ -0.2 -0.0915 1.018, 0.2 -0.0915 1.018, 0.2 -0.0915 1.222, -0.2 -0.0915 1.222 ]
+              }
+              texCoord TextureCoordinate {
+                point [ 0 %<= fmt(v0) >%, 1 %<= fmt(v0) >%, 1 %<= fmt(v1) >%, 0 %<= fmt(v1) >% ]
+              }
+              coordIndex [ 0 1 2 3 -1 ]
+              texCoordIndex [ 0 1 2 3 -1 ]
+            }
+          }
+        ]
+      }
+    ]
+    boundingObject Pose {
+      translation 0 0.2 1
+      children [
+        Cylinder {
+          height 2
+          radius 0.12
+        }
+      ]
+    }
+  }
+}
