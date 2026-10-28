@@ -1,0 +1,144 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: roof of the warehouse (world frame, keep at the origin).
+# The steel deck at z = 10.6 m is single-sided and faces down: it closes the
+# building for cameras inside but is invisible from above, so high cameras
+# see the floor. Nine dark steel trusses (every 10 m in x) and
+# thirty skylights glowing with the dusk sky. Nothing casts shadows or can be
+# picked. The engine hides the whole node (DEF ROOF) from the Viewpoint in
+# the OVERHEAD camera mode with Node.setVisibility.
+# template language: javascript
+
+PROTO WarehouseRoof [
+  field SFVec3f    translation    0 0 0
+  field SFRotation rotation       0 0 1 0
+  field SFString   name           "roof"
+  field SFFloat    skylightGlow   1.4       # Emissive intensity of the skylights.
+]
+{
+  %<
+    const f = (v) => (Math.abs(v) < 5e-5 ? '0' : v.toFixed(3));
+    const FACES = [[0, 3, 2, 1], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [3, 0, 4, 7], [1, 2, 6, 5]];
+    function newMesh() { return { p: [], i: [] }; }
+    function frameBox(m, c, u, v, w, hu, hv, hw) {
+      const b = m.p.length;
+      for (const s of [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]])
+        m.p.push(f(c[0] + s[0] * hu * u[0] + s[1] * hv * v[0] + s[2] * hw * w[0]) + ' ' +
+                 f(c[1] + s[0] * hu * u[1] + s[1] * hv * v[1] + s[2] * hw * w[1]) + ' ' +
+                 f(c[2] + s[0] * hu * u[2] + s[1] * hv * v[2] + s[2] * hw * w[2]));
+      for (const q of FACES)
+        m.i.push((b + q[0]) + ' ' + (b + q[1]) + ' ' + (b + q[2]) + ' ' + (b + q[3]) + ' -1');
+    }
+    function box(m, x0, x1, y0, y1, z0, z1) {
+      frameBox(m, [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+               (x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / 2);
+    }
+    // Member in the plane x = const between (ya, za) and (yb, zb).
+    function member(m, x, ya, za, yb, zb, size) {
+      const dy = yb - ya, dz = zb - za, len = Math.sqrt(dy * dy + dz * dz);
+      const u = [0, dy / len, dz / len];
+      const v = [-1, 0, 0];
+      const w = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+      frameBox(m, [x, (ya + yb) / 2, (za + zb) / 2], u, v, w, len / 2, size / 2, size / 2);
+    }
+    const emit = (m) => 'coord Coordinate { point [ ' + m.p.join(', ') + ' ] } coordIndex [ ' + m.i.join(' ') + ' ]';
+
+    const steel = newMesh(), sky = newMesh();
+    const ZB0 = 9.2, ZB1 = 9.32, ZT0 = 10.35, ZT1 = 10.49, DECK = 10.6;
+    // Nine Warren trusses spanning the building (north-south), every 10 m in x.
+    // There are no purlins across them: seen from above (the deck is invisible
+    // from there) the roof reads as nine clean lines instead of a cage.
+    for (let k = 0; k < 9; ++k) {
+      const x = 9.5 + 10 * k;
+      box(steel, x - 0.08, x + 0.08, -0.5, 49.5, ZT0, ZT1);
+      box(steel, x - 0.08, x + 0.08, -0.5, 49.5, ZB0, ZB1);
+      for (let j = 0; j <= 10; ++j) {
+        const y = -0.5 + 5 * j;
+        box(steel, x - 0.04, x + 0.04, y - 0.04, y + 0.04, ZB1, ZT0);
+        if (j < 10) {
+          member(steel, x, y, ZB1, y + 2.5, ZT0, 0.06);
+          member(steel, x, y + 2.5, ZT0, y + 5, ZB1, 0.06);
+        }
+      }
+      // Top chord bearing on the deck.
+      box(steel, x - 0.05, x + 0.05, -0.5, 49.5, ZT1, DECK - 0.005);
+    }
+    // Skylights: downward-facing emissive panels just under the deck.
+    let skyPts = '', skyIdx = '', n = 0;
+    for (const yc of [8.0, 24.5, 41.0])
+      for (let k = 0; k < 10; ++k) {
+        const xc = 4.5 + 10 * k;
+        const x0 = xc - 3, x1 = xc + 3, y0 = yc - 0.75, y1 = yc + 0.75, z = DECK - 0.01;
+        skyPts += f(x0) + ' ' + f(y0) + ' ' + z + ', ' + f(x0) + ' ' + f(y1) + ' ' + z + ', ' +
+                  f(x1) + ' ' + f(y1) + ' ' + z + ', ' + f(x1) + ' ' + f(y0) + ' ' + z + ', ';
+        skyIdx += n + ' ' + (n + 1) + ' ' + (n + 2) + ' ' + (n + 3) + ' -1 ';
+        n += 4;
+      }
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "warehouse roof"
+    children [
+      # Steel deck, facing down (clockwise seen from above = invisible from above).
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColor 0.3 0.32 0.36
+          baseColorMap ImageTexture {
+            url [
+              "../textures/wall_panel.jpg"
+            ]
+          }
+          normalMap ImageTexture {
+            url [
+              "../textures/wall_panel_normal.jpg"
+            ]
+          }
+          roughness 0.6
+          metalness 0.5
+        }
+        geometry IndexedFaceSet {
+          coord Coordinate {
+            point [ -0.8 -0.8 10.6, -0.8 49.8 10.6, 99.8 49.8 10.6, 99.8 -0.8 10.6 ]
+          }
+          texCoord TextureCoordinate {
+            point [ 0 0, 0 25.3, 50.3 25.3, 50.3 0 ]
+          }
+          coordIndex [ 0 1 2 3 -1 ]
+          texCoordIndex [ 0 1 2 3 -1 ]
+        }
+      }
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColor 0.26 0.28 0.32
+          roughness 0.5
+          metalness 0.6
+        }
+        geometry IndexedFaceSet {
+          %<= emit(steel) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        isPickable FALSE
+        appearance PBRAppearance {
+          baseColor 0.6 0.7 0.85
+          roughness 0.2
+          metalness 0
+          emissiveColor 0.62 0.74 0.98
+          emissiveIntensity IS skylightGlow
+        }
+        geometry IndexedFaceSet {
+          coord Coordinate {
+            point [ %<= skyPts >% ]
+          }
+          coordIndex [ %<= skyIdx >% ]
+        }
+      }
+    ]
+  }
+}

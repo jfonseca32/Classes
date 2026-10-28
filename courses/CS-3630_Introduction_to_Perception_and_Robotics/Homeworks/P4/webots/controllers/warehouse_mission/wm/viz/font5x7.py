@@ -1,0 +1,247 @@
+"""A tiny 5x7 bitmap font for text drawn into Display images (no Webots import).
+
+The hologram and minimap renderers (``hologram.py``) draw their titles,
+legends and dock numbers into NumPy RGBA images with this font, because a
+Webots ``Display`` image cannot use the supervisor's label fonts.
+
+Every printable ASCII character (32-126) is a 5x7 glyph stored as five
+column bytes (the classic HD44780 / "glcdfont" layout): byte ``k`` is column
+``k`` from the left, bit ``r`` (least significant bit first) is row ``r``
+from the top. Characters outside 32-126 are drawn as ``?``.
+
+Images are ``(H, W, 4) uint8`` RGBA arrays with *straight* (not
+premultiplied) alpha, row 0 at the top, and text is alpha-blended "over"
+them. Example::
+
+    img = np.zeros((40, 200, 4), np.uint8)
+    draw_text(img, "ROBOT VISION", 4, 4, (25, 230, 255), scale=2, shadow=(0, 0, 0))
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from functools import lru_cache
+
+import numpy as np
+
+GLYPH_W, GLYPH_H = 5, 7  # pixels at scale 1
+
+# Five column bytes per character, from " " (32) to "~" (126).
+_GLYPH_COLUMNS = (
+    (0x00, 0x00, 0x00, 0x00, 0x00),  # space
+    (0x00, 0x00, 0x5F, 0x00, 0x00),  # !
+    (0x00, 0x07, 0x00, 0x07, 0x00),  # "
+    (0x14, 0x7F, 0x14, 0x7F, 0x14),  # #
+    (0x24, 0x2A, 0x7F, 0x2A, 0x12),  # $
+    (0x23, 0x13, 0x08, 0x64, 0x62),  # %
+    (0x36, 0x49, 0x55, 0x22, 0x50),  # &
+    (0x00, 0x05, 0x03, 0x00, 0x00),  # '
+    (0x00, 0x1C, 0x22, 0x41, 0x00),  # (
+    (0x00, 0x41, 0x22, 0x1C, 0x00),  # )
+    (0x14, 0x08, 0x3E, 0x08, 0x14),  # *
+    (0x08, 0x08, 0x3E, 0x08, 0x08),  # +
+    (0x00, 0x50, 0x30, 0x00, 0x00),  # ,
+    (0x08, 0x08, 0x08, 0x08, 0x08),  # -
+    (0x00, 0x60, 0x60, 0x00, 0x00),  # .
+    (0x20, 0x10, 0x08, 0x04, 0x02),  # /
+    (0x3E, 0x51, 0x49, 0x45, 0x3E),  # 0
+    (0x00, 0x42, 0x7F, 0x40, 0x00),  # 1
+    (0x42, 0x61, 0x51, 0x49, 0x46),  # 2
+    (0x21, 0x41, 0x45, 0x4B, 0x31),  # 3
+    (0x18, 0x14, 0x12, 0x7F, 0x10),  # 4
+    (0x27, 0x45, 0x45, 0x45, 0x39),  # 5
+    (0x3C, 0x4A, 0x49, 0x49, 0x30),  # 6
+    (0x01, 0x71, 0x09, 0x05, 0x03),  # 7
+    (0x36, 0x49, 0x49, 0x49, 0x36),  # 8
+    (0x06, 0x49, 0x49, 0x29, 0x1E),  # 9
+    (0x00, 0x36, 0x36, 0x00, 0x00),  # :
+    (0x00, 0x56, 0x36, 0x00, 0x00),  # ;
+    (0x08, 0x14, 0x22, 0x41, 0x00),  # <
+    (0x14, 0x14, 0x14, 0x14, 0x14),  # =
+    (0x00, 0x41, 0x22, 0x14, 0x08),  # >
+    (0x02, 0x01, 0x51, 0x09, 0x06),  # ?
+    (0x32, 0x49, 0x79, 0x41, 0x3E),  # @
+    (0x7E, 0x11, 0x11, 0x11, 0x7E),  # A
+    (0x7F, 0x49, 0x49, 0x49, 0x36),  # B
+    (0x3E, 0x41, 0x41, 0x41, 0x22),  # C
+    (0x7F, 0x41, 0x41, 0x22, 0x1C),  # D
+    (0x7F, 0x49, 0x49, 0x49, 0x41),  # E
+    (0x7F, 0x09, 0x09, 0x09, 0x01),  # F
+    (0x3E, 0x41, 0x49, 0x49, 0x7A),  # G
+    (0x7F, 0x08, 0x08, 0x08, 0x7F),  # H
+    (0x00, 0x41, 0x7F, 0x41, 0x00),  # I
+    (0x20, 0x40, 0x41, 0x3F, 0x01),  # J
+    (0x7F, 0x08, 0x14, 0x22, 0x41),  # K
+    (0x7F, 0x40, 0x40, 0x40, 0x40),  # L
+    (0x7F, 0x02, 0x0C, 0x02, 0x7F),  # M
+    (0x7F, 0x04, 0x08, 0x10, 0x7F),  # N
+    (0x3E, 0x41, 0x41, 0x41, 0x3E),  # O
+    (0x7F, 0x09, 0x09, 0x09, 0x06),  # P
+    (0x3E, 0x41, 0x51, 0x21, 0x5E),  # Q
+    (0x7F, 0x09, 0x19, 0x29, 0x46),  # R
+    (0x46, 0x49, 0x49, 0x49, 0x31),  # S
+    (0x01, 0x01, 0x7F, 0x01, 0x01),  # T
+    (0x3F, 0x40, 0x40, 0x40, 0x3F),  # U
+    (0x1F, 0x20, 0x40, 0x20, 0x1F),  # V
+    (0x3F, 0x40, 0x38, 0x40, 0x3F),  # W
+    (0x63, 0x14, 0x08, 0x14, 0x63),  # X
+    (0x07, 0x08, 0x70, 0x08, 0x07),  # Y
+    (0x61, 0x51, 0x49, 0x45, 0x43),  # Z
+    (0x00, 0x7F, 0x41, 0x41, 0x00),  # [
+    (0x02, 0x04, 0x08, 0x10, 0x20),  # backslash
+    (0x00, 0x41, 0x41, 0x7F, 0x00),  # ]
+    (0x04, 0x02, 0x01, 0x02, 0x04),  # ^
+    (0x40, 0x40, 0x40, 0x40, 0x40),  # _
+    (0x00, 0x01, 0x02, 0x04, 0x00),  # `
+    (0x20, 0x54, 0x54, 0x54, 0x78),  # a
+    (0x7F, 0x48, 0x44, 0x44, 0x38),  # b
+    (0x38, 0x44, 0x44, 0x44, 0x20),  # c
+    (0x38, 0x44, 0x44, 0x48, 0x7F),  # d
+    (0x38, 0x54, 0x54, 0x54, 0x18),  # e
+    (0x08, 0x7E, 0x09, 0x01, 0x02),  # f
+    (0x0C, 0x52, 0x52, 0x52, 0x3E),  # g
+    (0x7F, 0x08, 0x04, 0x04, 0x78),  # h
+    (0x00, 0x44, 0x7D, 0x40, 0x00),  # i
+    (0x20, 0x40, 0x44, 0x3D, 0x00),  # j
+    (0x7F, 0x10, 0x28, 0x44, 0x00),  # k
+    (0x00, 0x41, 0x7F, 0x40, 0x00),  # l
+    (0x7C, 0x04, 0x18, 0x04, 0x78),  # m
+    (0x7C, 0x08, 0x04, 0x04, 0x78),  # n
+    (0x38, 0x44, 0x44, 0x44, 0x38),  # o
+    (0x7C, 0x14, 0x14, 0x14, 0x08),  # p
+    (0x08, 0x14, 0x14, 0x18, 0x7C),  # q
+    (0x7C, 0x08, 0x04, 0x04, 0x08),  # r
+    (0x48, 0x54, 0x54, 0x54, 0x20),  # s
+    (0x04, 0x3F, 0x44, 0x40, 0x20),  # t
+    (0x3C, 0x40, 0x40, 0x20, 0x7C),  # u
+    (0x1C, 0x20, 0x40, 0x20, 0x1C),  # v
+    (0x3C, 0x40, 0x30, 0x40, 0x3C),  # w
+    (0x44, 0x28, 0x10, 0x28, 0x44),  # x
+    (0x0C, 0x50, 0x50, 0x50, 0x3C),  # y
+    (0x44, 0x64, 0x54, 0x4C, 0x44),  # z
+    (0x00, 0x08, 0x36, 0x41, 0x00),  # {
+    (0x00, 0x00, 0x7F, 0x00, 0x00),  # |
+    (0x00, 0x41, 0x36, 0x08, 0x00),  # }
+    (0x08, 0x04, 0x08, 0x10, 0x08),  # ~
+)
+assert len(_GLYPH_COLUMNS) == 95
+
+
+def _build_glyphs() -> np.ndarray:
+    """(95, 7, 5) bool array of every glyph, row 0 at the top."""
+    columns = np.array(_GLYPH_COLUMNS, dtype=np.uint8)  # (95, 5)
+    bits = (columns[:, None, :] >> np.arange(GLYPH_H, dtype=np.uint8)[None, :, None]) & 1
+    return bits.astype(bool)
+
+
+_GLYPHS = _build_glyphs()
+_GLYPHS.flags.writeable = False
+
+
+def glyph(char: str) -> np.ndarray:
+    """The (7, 5) bool bitmap of one character (``?`` outside printable ASCII)."""
+    code = ord(char) if char else 63
+    if not 32 <= code <= 126:
+        code = 63
+    return _GLYPHS[code - 32]
+
+
+def text_size(text: str, scale: int = 1, spacing: int = 1, line_gap: int = 2) -> tuple[int, int]:
+    """Size ``(width, height)`` in pixels of ``text`` (``\\n`` starts a new line)."""
+    lines = text.split("\n")
+    longest = max(len(line) for line in lines)
+    width = max(0, longest * (GLYPH_W + spacing) - spacing) * scale
+    height = (len(lines) * (GLYPH_H + line_gap) - line_gap) * scale
+    return width, height
+
+
+@lru_cache(maxsize=512)
+def text_mask(text: str, scale: int = 1, spacing: int = 1, line_gap: int = 2) -> np.ndarray:
+    """Bool mask ``(height, width)`` of ``text`` rendered at an integer ``scale`` (cached,
+    read-only).
+    """
+    scale = max(1, int(scale))
+    lines = text.split("\n")
+    width, height = text_size(text, 1, spacing, line_gap)
+    mask = np.zeros((max(height, 1), max(width, 1)), dtype=bool)
+    for row, line in enumerate(lines):
+        y = row * (GLYPH_H + line_gap)
+        for col, char in enumerate(line):
+            if char != " ":
+                x = col * (GLYPH_W + spacing)
+                mask[y : y + GLYPH_H, x : x + GLYPH_W] = glyph(char)
+    if scale > 1:
+        mask = np.repeat(np.repeat(mask, scale, axis=0), scale, axis=1)
+    mask.flags.writeable = False
+    return mask
+
+
+def blend_mask(
+    img: np.ndarray, mask: np.ndarray, x: int, y: int, color: Sequence[int], alpha: float = 1.0
+) -> None:
+    """Alpha-blend ``color`` into ``img`` wherever ``mask`` is set, with its top-left corner at (x,
+    y).
+
+    ``mask`` may be bool or a float coverage in [0, 1]; the part outside the
+    image is clipped. ``img`` is an ``(H, W, 4) uint8`` straight-alpha RGBA array.
+    """
+    h, w = mask.shape
+    H, W = img.shape[:2]
+    x0, y0 = max(0, x), max(0, y)
+    x1, y1 = min(W, x + w), min(H, y + h)
+    if x0 >= x1 or y0 >= y1 or alpha <= 0.0:
+        return
+    sub = mask[y0 - y : y1 - y, x0 - x : x1 - x]
+    a_src = sub.astype(np.float32) * np.float32(min(1.0, alpha))
+    region = img[y0:y1, x0:x1]
+    a_dst = region[..., 3].astype(np.float32) * np.float32(1.0 / 255.0)
+    a_out = a_src + a_dst * (1.0 - a_src)
+    safe = np.maximum(a_out, 1e-6)
+    src = np.asarray(color[:3], dtype=np.float32)
+    k_src = (a_src / safe)[..., None]
+    rgb = src * k_src + region[..., :3].astype(np.float32) * (1.0 - k_src)
+    region[..., :3] = np.clip(rgb + 0.5, 0, 255).astype(np.uint8)
+    region[..., 3] = np.clip(a_out * 255.0 + 0.5, 0, 255).astype(np.uint8)
+
+
+def draw_text(
+    img: np.ndarray,
+    text: str,
+    x: int,
+    y: int,
+    color: Sequence[int],
+    scale: int = 1,
+    alpha: float = 1.0,
+    spacing: int = 1,
+    line_gap: int = 2,
+    align: str = "left",
+    shadow: Sequence[int] | None = None,
+    shadow_alpha: float = 0.85,
+    outline: bool = False,
+) -> tuple[int, int, int, int]:
+    """Draw ``text`` into the RGBA image ``img`` and return its box ``(x0, y0, x1, y1)``.
+
+    ``(x, y)`` is the top-left corner (``align="left"``), the top center
+    (``"center"``) or the top-right corner (``"right"``). ``shadow`` is an
+    RGB color drawn one scaled pixel down-right (or all around with
+    ``outline=True``) under the text so that it stays readable on busy
+    backgrounds.
+    """
+    mask = text_mask(text, scale, spacing, line_gap)
+    h, w = mask.shape
+    if align == "center":
+        x -= w // 2
+    elif align == "right":
+        x -= w
+    x, y = int(round(x)), int(round(y))
+    if shadow is not None:
+        d = max(1, scale // 2)  # shadow offset in pixels
+        offsets = (
+            [(dx, dy) for dx in (-d, 0, d) for dy in (-d, 0, d) if dx or dy]
+            if outline
+            else [(d, d)]
+        )
+        for dx, dy in offsets:
+            blend_mask(img, mask, x + dx, y + dy, shadow, shadow_alpha * alpha)
+    blend_mask(img, mask, x, y, color, alpha)
+    return x, y, x + w, y + h

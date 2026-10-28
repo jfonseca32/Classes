@@ -1,0 +1,138 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: a light pole for the truck yard around the warehouse.
+# The origin is the foot of the pole; the arm and the LED head point toward
+# local +x. There is no Light node (lights are expensive): the head is
+# emissive, and a soft warm light pool is painted on the ground below it.
+# `intensity` (plain exposed field, cheap to animate) scales the head glow.
+# template language: javascript
+
+PROTO YardLight [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "yard light"
+  field SFFloat    height       9              # Height of the LED head (m).
+  field SFFloat    intensity    4              # Emissive intensity of the LED head.
+  field SFColor    color        1 0.86 0.62    # Warm white.
+  field SFFloat    poolOpacity  0.4            # Opacity of the painted light pool (0 = none).
+]
+{
+  %<
+    const H = Math.max(3, fields.height.value);
+    const ARM = 1.6;
+    const pool = Math.max(0, Math.min(1, fields.poolOpacity.value));
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "yard light"
+    children [
+      # Concrete footing.
+      Pose {
+        translation 0 0 0.25
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.55 0.56 0.58
+              roughness 0.85
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.5
+              radius 0.28
+              subdivision 16
+            }
+          }
+        ]
+      }
+      # Pole and arm.
+      Pose {
+        translation 0 0 %<= (0.5 + (H + 0.15 - 0.5) / 2).toFixed(3) >%
+        children [
+          Shape {
+            appearance DEF YARD_LIGHT_METAL PBRAppearance {
+              baseColor 0.28 0.3 0.33
+              roughness 0.4
+              metalness 0.7
+            }
+            geometry Cylinder {
+              height %<= (H + 0.15 - 0.5).toFixed(3) >%
+              radius 0.085
+              subdivision 12
+            }
+          }
+        ]
+      }
+      Pose {
+        translation %<= (ARM / 2).toFixed(3) >% 0 %<= (H + 0.1).toFixed(3) >%
+        children [
+          Shape {
+            appearance USE YARD_LIGHT_METAL
+            geometry Box {
+              size %<= ARM.toFixed(3) >% 0.08 0.08
+            }
+          }
+        ]
+      }
+      # LED head: housing and glowing diffuser (facing down).
+      Pose {
+        translation %<= ARM.toFixed(3) >% 0 %<= (H + 0.06).toFixed(3) >%
+        children [
+          Shape {
+            appearance USE YARD_LIGHT_METAL
+            geometry Box {
+              size 0.75 0.36 0.12
+            }
+          }
+          Pose {
+            translation 0 0 -0.065
+            children [
+              Shape {
+                castShadows FALSE
+                appearance PBRAppearance {
+                  baseColor 1 1 1
+                  roughness 0.3
+                  metalness 0
+                  emissiveColor IS color
+                  emissiveIntensity IS intensity
+                }
+                geometry Box {
+                  size 0.66 0.28 0.012
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< if (pool > 0) { >%
+      # Painted light pool on the ground (soft radial gradient).
+      Pose {
+        translation %<= ARM.toFixed(3) >% 0 0.02
+        children [
+          Shape {
+            castShadows FALSE
+            isPickable FALSE
+            appearance PBRAppearance {
+              baseColor IS color
+              baseColorMap DEF LIGHT_POOL ImageTexture {
+                url [
+                  "../textures/light_pool.png"
+                ]
+              }
+              emissiveColor IS color
+              emissiveColorMap USE LIGHT_POOL
+              emissiveIntensity 0.5
+              transparency %<= (1 - pool).toFixed(3) >%
+              roughness 1
+              metalness 0
+            }
+            geometry Plane {
+              size 13 13
+            }
+          }
+        ]
+      }
+      %< } >%
+    ]
+  }
+}

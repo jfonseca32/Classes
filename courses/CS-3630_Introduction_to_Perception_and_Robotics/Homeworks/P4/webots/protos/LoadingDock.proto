@@ -1,0 +1,578 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: a shipping dock in the east wall (DESIGN section 5.3).
+# The origin is the center of the door opening on the inner face of the wall,
+# at floor level; local +x points out of the building (the wall occupies
+# x in [0, 0.3]). The door opening is 3.2 m wide and 3.6 m high.
+#
+# Contents: a roll-up door, a red/green status light with an LED strip under
+# the header, an embedded official ConveyorBelt (belt top at z = 0.64 m, from
+# x = -0.74 m inside to 3.84 m outside) passing through a port under the
+# door, yellow/black jamb guards and bollards, the dock seal and bumpers, a
+# "DOCK n" sign on both sides of the wall, and a box trailer backed up to the
+# seal (its floor is flush with the warehouse floor; the yard is at z = -1.2),
+# with shelter curtains around its open rear and a lit interior.
+#
+# Engine hooks (write the PROTO fields; nodes inside a PROTO are read-only):
+#   DOOR (Pose)             translation   <- doorTranslation (0 0 0 closed, 0 0 2.95 open)
+#   STATUS_LIGHT_MATERIAL   emissiveColor <- statusColor     (red = closed/busy, green = ready)
+#   CONVEYOR (ConveyorBelt) speed          = conveyorSpeed   (read-only at runtime: changing
+#                                                              it regenerates the whole dock)
+# e.g. dock.getFromProtoDef("DOOR").getField("translation").getActualField()
+# returns the writable doorTranslation field.
+# template language: javascript
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/conveyors/protos/ConveyorBelt.proto"
+EXTERNPROTO "SafetyBollard.proto"
+EXTERNPROTO "HangingSign.proto"
+
+PROTO LoadingDock [
+  field SFVec3f    translation      99.5 10 0
+  field SFRotation rotation         0 0 1 0
+  field SFString   name             "dock"
+  field SFInt32    dockNumber       1                 # 1..3: number on the signs.
+  field SFVec3f    doorTranslation  0 0 0             # Roll-up door offset (0 0 2.95 = open).
+  field SFColor    statusColor      0.95 0.08 0.04    # Status light and header LED strip.
+  field SFFloat    conveyorSpeed    0.4               # Belt speed (m/s), fixed at load time.
+  field SFBool     trailer          TRUE              # Draw the trailer outside.
+  field SFBool     truckCab         FALSE             # Attach a tractor to the trailer.
+  field SFColor    cabColor         0.72 0.08 0.08    # Tractor paint.
+]
+{
+  %<
+    const f = (v) => (Math.abs(v) < 5e-5 ? '0' : v.toFixed(3));
+    const FACES = [[0, 3, 2, 1], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [3, 0, 4, 7], [1, 2, 6, 5]];
+    function newMesh() { return { p: [], i: [], t: [], ti: [] }; }
+    function box(m, x0, x1, y0, y1, z0, z1, textured) {
+      const b = m.p.length;
+      for (const c of [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]])
+        m.p.push(f(c[0]) + ' ' + f(c[1]) + ' ' + f(c[2]));
+      for (const q of FACES) {
+        m.i.push((b + q[0]) + ' ' + (b + q[1]) + ' ' + (b + q[2]) + ' ' + (b + q[3]) + ' -1');
+        if (textured) m.ti.push('0 1 2 3 -1');
+      }
+    }
+    // Textured quad, counterclockwise seen from the front: a b c d with uv ta tb tc td.
+    function quad(m, a, b, c, d, ta, tb, tc, td) {
+      const i0 = m.p.length, t0 = m.t.length;
+      for (const q of [a, b, c, d]) m.p.push(f(q[0]) + ' ' + f(q[1]) + ' ' + f(q[2]));
+      for (const q of [ta, tb, tc, td]) m.t.push(f(q[0]) + ' ' + f(q[1]));
+      m.i.push(i0 + ' ' + (i0 + 1) + ' ' + (i0 + 2) + ' ' + (i0 + 3) + ' -1');
+      m.ti.push(t0 + ' ' + (t0 + 1) + ' ' + (t0 + 2) + ' ' + (t0 + 3) + ' -1');
+    }
+    function emit(m, unitTex) {
+      let s = 'coord Coordinate { point [ ' + m.p.join(', ') + ' ] } coordIndex [ ' + m.i.join(' ') + ' ]';
+      if (unitTex)
+        s += ' texCoord TextureCoordinate { point [ 0 0, 1 0, 1 1, 0 1 ] } texCoordIndex [ ' + m.ti.join(' ') + ' ]';
+      else if (m.t.length)
+        s += ' texCoord TextureCoordinate { point [ ' + m.t.join(', ') + ' ] } texCoordIndex [ ' + m.ti.join(' ') + ' ]';
+      return s;
+    }
+    const n = Math.max(1, Math.min(3, fields.dockNumber.value));
+
+    // ------------------------------------------------------------ inside and door
+    const steel = newMesh(), slats = newMesh(), rubber = newMesh(), yellow = newMesh(), hazard = newMesh();
+    const plate = newMesh(), warm = newMesh(), red = newMesh(), amber = newMesh();
+    // Steel frame trim around the opening (inner face).
+    box(steel, -0.07, 0.0, -1.76, -1.6, 0, 3.76);
+    box(steel, -0.07, 0.0, 1.6, 1.76, 0, 3.76);
+    box(steel, -0.07, 0.0, -1.76, 1.76, 3.6, 3.76);
+    // Roll-up door hood above the opening.
+    box(steel, -0.46, 0.0, -1.8, 1.8, 3.8, 4.25);
+    // Fixed port panels on both sides of the conveyor, and the brush seal above it.
+    box(steel, 0.13, 0.17, -1.6, -0.46, 0, 0.7);
+    box(steel, 0.13, 0.17, 0.46, 1.6, 0, 0.7);
+    box(rubber, 0.12, 0.18, -0.46, 0.46, 0.665, 0.72);
+    // Roll-up door: horizontal slats from the brush seal to the header.
+    for (let k = 0; k < 15; ++k) {
+      const z0 = 0.72 + k * (3.6 - 0.72) / 15, z1 = 0.72 + (k + 1) * (3.6 - 0.72) / 15;
+      box(slats, 0.135, 0.165, -1.6, 1.6, z0 + 0.004, z1 - 0.004);
+      box(slats, 0.128, 0.172, -1.6, 1.6, z1 - 0.03, z1 - 0.004);
+    }
+    // Hazard stripes on the jambs (inner face), tiled every 0.3 m.
+    for (const side of [-1, 1]) {
+      const ya = side * 1.6, yb = side * 1.9;
+      const tu = 0.3 / 0.3, tv = 2.2 / 0.3;
+      if (side < 0)
+        quad(hazard, [-0.072, ya, 0], [-0.072, yb, 0], [-0.072, yb, 2.2], [-0.072, ya, 2.2], [0, 0], [tu, 0], [tu, tv], [0, tv]);
+      else
+        quad(hazard, [-0.072, yb, 0], [-0.072, ya, 0], [-0.072, ya, 2.2], [-0.072, yb, 2.2], [0, 0], [tu, 0], [tu, tv], [0, tv]);
+    }
+    // Diamond-plate dock leveler inside, and its lip bridging to the trailer.
+    quad(plate, [-1.0, -1.5, 0.012], [0.0, -1.5, 0.012], [0.0, 1.5, 0.012], [-1.0, 1.5, 0.012], [0, 0], [2, 0], [2, 6], [0, 6]);
+    box(steel, 0.0, 0.66, -1.45, 1.45, -0.03, 0.0);
+    // Status light housing (the dome is a separate shape with STATUS_LIGHT_MATERIAL).
+    box(steel, -0.1, 0.0, -2.42, -2.08, 2.96, 3.44);
+    // ------------------------------------------------------------ outside
+    // Dock seal pads and bumpers.
+    box(rubber, 0.3, 0.6, -2.0, -1.6, 0, 3.95);
+    box(rubber, 0.3, 0.6, 1.6, 2.0, 0, 3.95);
+    box(rubber, 0.3, 0.6, -2.0, 2.0, 3.6, 3.95);
+    box(yellow, 0.3, 0.605, -1.96, -1.9, 0.2, 3.5);
+    box(yellow, 0.3, 0.605, 1.9, 1.96, 0.2, 3.5);
+    for (const y of [-1.25, 1.25])
+      box(rubber, 0.3, 0.44, y - 0.14, y + 0.14, -0.5, -0.06);
+    // Exterior wall lamps (emissive only) above the seal.
+    for (const y of [-2.45, 2.45]) {
+      box(steel, 0.3, 0.46, y - 0.13, y + 0.13, 4.25, 4.4);
+      box(warm, 0.31, 0.45, y - 0.11, y + 0.11, 4.235, 4.25);
+    }
+
+    // ------------------------------------------------------------ trailer
+    const withTrailer = fields.trailer.value;
+    const tWhite = newMesh(), tInner = newMesh(), tSides = newMesh(), tFloor = newMesh(), cargo = newMesh(), wrapped = newMesh();
+    const tLight = newMesh();
+    const X0 = 0.62, X1 = 14.22, HW = 1.3, ZF = -0.12, ZR = 2.9;
+    if (withTrailer) {
+      // Dock shelter curtains closing the gaps between the door opening and the trailer.
+      box(rubber, 0.3, X0, -1.6, 1.6, ZR + 0.02, 3.6);
+      box(rubber, 0.3, X0, -1.6, -HW - 0.02, 0, ZR + 0.02);
+      box(rubber, 0.3, X0, HW + 0.02, 1.6, 0, ZR + 0.02);
+      // Interior light strip along the trailer ceiling.
+      box(tLight, X0 + 0.6, X1 - 0.6, -0.1, 0.1, ZR - 0.07, ZR - 0.04);
+      box(tFloor, X0, X1, -HW, HW, ZF, 0.0);
+      box(tInner, X0, X1, -HW, -HW + 0.04, 0.0, ZR - 0.04);
+      box(tInner, X0, X1, HW - 0.04, HW, 0.0, ZR - 0.04);
+      box(tInner, X1 - 0.04, X1, -HW + 0.04, HW - 0.04, 0.0, ZR - 0.04);
+      box(tWhite, X0, X1, -HW - 0.01, HW + 0.01, ZR - 0.04, ZR);
+      box(tWhite, X1, X1 + 0.02, -HW, HW, ZF, ZR);
+      // Outer faces of the side walls carry the livery.
+      quad(tSides, [X0, -HW - 0.002, ZF], [X1, -HW - 0.002, ZF], [X1, -HW - 0.002, ZR], [X0, -HW - 0.002, ZR],
+           [0, 0], [1, 0], [1, 1], [0, 1]);
+      quad(tSides, [X1, HW + 0.002, ZF], [X0, HW + 0.002, ZF], [X0, HW + 0.002, ZR], [X1, HW + 0.002, ZR],
+           [0, 0], [1, 0], [1, 1], [0, 1]);
+      // Rear frame, chassis rails, bumper bar, landing gear.
+      box(steel, X0, X0 + 0.1, -HW - 0.02, -HW + 0.06, -0.2, ZR + 0.02);
+      box(steel, X0, X0 + 0.1, HW - 0.06, HW + 0.02, -0.2, ZR + 0.02);
+      box(steel, X0, X0 + 0.1, -HW - 0.02, HW + 0.02, ZR - 0.12, ZR + 0.02);
+      box(steel, X0, X0 + 0.1, -HW - 0.02, HW + 0.02, -0.3, ZF);
+      for (const y of [-0.5, 0.5])
+        box(steel, X0 + 0.3, X1 - 0.6, y - 0.08, y + 0.08, -0.42, ZF);
+      box(steel, X0 + 0.05, X0 + 0.16, -1.1, 1.1, -0.78, -0.64);
+      for (const y of [-0.8, 0.8])
+        box(steel, X0 + 0.08, X0 + 0.14, y - 0.04, y + 0.04, -0.64, -0.3);
+      for (const y of [-0.85, 0.85]) {
+        box(steel, 11.2, 11.3, y - 0.06, y + 0.06, -1.1, -0.3);
+        box(steel, 11.05, 11.45, y - 0.15, y + 0.15, -1.2, -1.14);
+      }
+      box(steel, 11.2, 11.3, -0.85, 0.85, -0.7, -0.64);
+      // Rear lights and clearance lights.
+      for (const y of [-1.12, 1.12]) {
+        box(red, X0 - 0.01, X0 + 0.02, y - 0.1, y + 0.1, -0.28, -0.18);
+        box(amber, X0 - 0.01, X0 + 0.02, y - 0.04, y + 0.04, ZR - 0.1, ZR - 0.04);
+      }
+      for (let k = 1; k <= 4; ++k)
+        for (const y of [-HW - 0.012, HW + 0.012])
+          box(amber, X0 + k * (X1 - X0) / 5 - 0.04, X0 + k * (X1 - X0) / 5 + 0.04, y - 0.01, y + 0.01, ZR - 0.12, ZR - 0.06);
+      // Cargo already loaded at the front of the trailer.
+      for (let a = 0; a < 3; ++a)
+        for (let b = 0; b < 4; ++b)
+          for (let c = 0; c < 4 - (a + b) % 2; ++c)
+            box(cargo, X1 - 0.06 - (a + 1) * 0.62, X1 - 0.08 - a * 0.62, -1.2 + b * 0.6, -1.22 + (b + 1) * 0.6,
+                c * 0.52, c * 0.52 + 0.5, true);
+      box(wrapped, X1 - 3.5, X1 - 2.3, -1.15, -0.15, 0.0, 1.35, true);
+      box(wrapped, X1 - 3.5, X1 - 2.3, 0.1, 1.1, 0.0, 1.15, true);
+    }
+    const withCab = withTrailer && fields.truckCab.value;
+    const cab = newMesh(), glass = newMesh(), chrome = newMesh(), lamps = newMesh();
+    if (withCab) {
+      const C0 = X1 + 0.35;
+      box(cab, C0, C0 + 2.3, -1.22, 1.22, -0.35, 2.55);
+      box(cab, C0 + 2.3, C0 + 3.5, -1.2, 1.2, -0.35, 1.05);
+      box(cab, C0 + 0.1, C0 + 2.2, -1.15, 1.15, 2.55, 2.95);
+      quad(glass, [C0 + 2.302, 1.08, 1.25], [C0 + 2.302, -1.08, 1.25], [C0 + 2.302, -1.08, 2.4], [C0 + 2.302, 1.08, 2.4],
+           [0, 0], [1, 0], [1, 1], [0, 1]);
+      quad(glass, [C0 + 0.5, -1.222, 1.3], [C0 + 2.1, -1.222, 1.3], [C0 + 2.1, -1.222, 2.3], [C0 + 0.5, -1.222, 2.3],
+           [0, 0], [1, 0], [1, 1], [0, 1]);
+      quad(glass, [C0 + 2.1, 1.222, 1.3], [C0 + 0.5, 1.222, 1.3], [C0 + 0.5, 1.222, 2.3], [C0 + 2.1, 1.222, 2.3],
+           [0, 0], [1, 0], [1, 1], [0, 1]);
+      box(chrome, C0 + 3.5, C0 + 3.56, -0.8, 0.8, -0.2, 0.95);
+      box(chrome, C0 + 3.5, C0 + 3.62, -1.22, 1.22, -0.55, -0.35);
+      for (const y of [-1.05, 1.05])
+        box(chrome, C0 - 0.05, C0 + 0.1, y - 0.06, y + 0.06, 1.0, 3.3);
+      for (const y of [-0.95, 0.95])
+        box(lamps, C0 + 3.555, C0 + 3.575, y - 0.13, y + 0.13, 0.35, 0.55);
+      box(steel, C0 - 1.2, C0 + 0.2, -0.9, 0.9, -0.5, -0.35);
+    }
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "loading dock"
+    children [
+      Shape {
+        castShadows FALSE
+        appearance DEF DOCK_STEEL PBRAppearance {
+          baseColor 0.2 0.21 0.24
+          roughness 0.45
+          metalness 0.6
+        }
+        geometry IndexedFaceSet {
+          %<= emit(steel, false) >%
+        }
+      }
+      DEF DOOR Pose {
+        translation IS doorTranslation
+        children [
+          Shape {
+            castShadows FALSE
+            appearance PBRAppearance {
+              baseColor 0.62 0.67 0.74
+              roughness 0.4
+              metalness 0.55
+            }
+            geometry IndexedFaceSet {
+              %<= emit(slats, false) >%
+            }
+          }
+        ]
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.04 0.04 0.045
+          roughness 0.85
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(rubber, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.97 0.74 0.05
+          roughness 0.45
+          metalness 0.1
+        }
+        geometry IndexedFaceSet {
+          %<= emit(yellow, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/hazard_stripes.jpg"
+            ]
+          }
+          roughness 0.5
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(hazard, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/diamond_plate.jpg"
+            ]
+          }
+          roughness 0.35
+          metalness 0.8
+        }
+        geometry IndexedFaceSet {
+          %<= emit(plate, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 1 0.9 0.7
+          roughness 0.3
+          metalness 0
+          emissiveColor 1 0.85 0.6
+          emissiveIntensity 3
+        }
+        geometry IndexedFaceSet {
+          %<= emit(warm, false) >%
+        }
+      }
+      # Status light: dome beside the door and an LED strip under the header.
+      Pose {
+        translation -0.13 -2.25 3.2
+        children [
+          Shape {
+            castShadows FALSE
+            appearance DEF STATUS_LIGHT_MATERIAL PBRAppearance {
+              baseColor 0.15 0.15 0.15
+              roughness 0.2
+              metalness 0
+              emissiveColor IS statusColor
+              emissiveIntensity 4
+            }
+            geometry Sphere {
+              radius 0.12
+              subdivision 2
+            }
+          }
+        ]
+      }
+      Pose {
+        translation -0.08 0 3.585
+        children [
+          Shape {
+            castShadows FALSE
+            appearance USE STATUS_LIGHT_MATERIAL
+            geometry Box {
+              size 0.03 3.1 0.03
+            }
+          }
+        ]
+      }
+      DEF CONVEYOR ConveyorBelt {
+        translation 1.55 0 0
+        name "dock %<= n >% conveyor"
+        size 4.5 0.7 0.64
+        appearance PBRAppearance {
+          baseColor 0.5 0.52 0.56
+          roughness 0.35
+          metalness 0.75
+        }
+        borderThickness 0.04
+        borderHeight 0.012
+        speed IS conveyorSpeed
+      }
+      SafetyBollard {
+        translation -0.55 -2.1 0
+        name "bollard left"
+      }
+      SafetyBollard {
+        translation -0.55 2.1 0
+        name "bollard right"
+      }
+      HangingSign {
+        translation -0.02 0 5.0
+        rotation 0 0 1 -1.5708
+        name "dock sign inside"
+        sign "DOCK %<= n >%"
+        width 2.8
+        doubleSided FALSE
+        glow 0.5
+      }
+      HangingSign {
+        translation 0.33 0 4.85
+        rotation 0 0 1 1.5708
+        name "dock sign outside"
+        sign "DOCK %<= n >%"
+        width 2.4
+        doubleSided FALSE
+        glow 0.7
+      }
+      %< if (withTrailer) { >%
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.9 0.91 0.92
+          roughness 0.4
+          metalness 0.3
+        }
+        geometry IndexedFaceSet {
+          %<= emit(tWhite, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.62 0.64 0.67
+          roughness 0.5
+          metalness 0.5
+        }
+        geometry IndexedFaceSet {
+          %<= emit(tInner, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 1 1 1
+          roughness 0.3
+          metalness 0
+          emissiveColor 1 0.95 0.85
+          emissiveIntensity 2.5
+        }
+        geometry IndexedFaceSet {
+          %<= emit(tLight, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.36 0.28 0.2
+          roughness 0.8
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(tFloor, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/trailer_side.jpg"
+            ]
+          }
+          roughness 0.35
+          metalness 0.2
+        }
+        geometry IndexedFaceSet {
+          %<= emit(tSides, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/cardboard.jpg"
+            ]
+          }
+          roughness 0.85
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(cargo, true) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/shrinkwrap.jpg"
+            ]
+          }
+          roughness 0.25
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= emit(wrapped, true) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.5 0.02 0.02
+          roughness 0.3
+          metalness 0
+          emissiveColor 1 0.05 0.03
+          emissiveIntensity 2
+        }
+        geometry IndexedFaceSet {
+          %<= emit(red, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.5 0.3 0.02
+          roughness 0.3
+          metalness 0
+          emissiveColor 1 0.55 0.05
+          emissiveIntensity 2
+        }
+        geometry IndexedFaceSet {
+          %<= emit(amber, false) >%
+        }
+      }
+      %< for (const x of [2.25, 3.55]) { for (const y of [-0.97, 0.97]) { >%
+      Pose {
+        translation %<= f(x) >% %<= f(y) >% -0.7
+        rotation 1 0 0 1.5708
+        children [
+          DEF TRAILER_TIRE Shape {
+            castShadows FALSE
+            appearance PBRAppearance {
+              baseColor 0.05 0.05 0.05
+              roughness 0.85
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.52
+              radius 0.5
+              subdivision 24
+            }
+          }
+          Shape {
+            castShadows FALSE
+            appearance PBRAppearance {
+              baseColor 0.7 0.72 0.75
+              roughness 0.3
+              metalness 0.9
+            }
+            geometry Cylinder {
+              height 0.54
+              radius 0.25
+              subdivision 16
+            }
+          }
+        ]
+      }
+      %< } } >%
+      %< } >%
+      %< if (withCab) { const C0 = X1 + 0.35; >%
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor IS cabColor
+          roughness 0.25
+          metalness 0.45
+        }
+        geometry IndexedFaceSet {
+          %<= emit(cab, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.03 0.04 0.06
+          roughness 0.05
+          metalness 0.6
+        }
+        geometry IndexedFaceSet {
+          %<= emit(glass, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 0.85 0.86 0.9
+          roughness 0.15
+          metalness 1
+        }
+        geometry IndexedFaceSet {
+          %<= emit(chrome, false) >%
+        }
+      }
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColor 1 1 0.9
+          roughness 0.2
+          metalness 0
+          emissiveColor 1 0.95 0.8
+          emissiveIntensity 3
+        }
+        geometry IndexedFaceSet {
+          %<= emit(lamps, false) >%
+        }
+      }
+      %< for (const x of [C0 + 0.2, C0 + 1.3, C0 + 2.9]) { for (const y of [-0.97, 0.97]) { >%
+      Pose {
+        translation %<= f(x) >% %<= f(y) >% -0.7
+        rotation 1 0 0 1.5708
+        children [
+          USE TRAILER_TIRE
+        ]
+      }
+      %< } } >%
+      %< } >%
+    ]
+  }
+}

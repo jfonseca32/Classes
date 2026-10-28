@@ -1,0 +1,1050 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/forklift/protos/Forklift.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/pallet/protos/WoodenPalletStack.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/pallet/protos/WoodenPallet.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/CardboardBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/containers/protos/PlasticCrate.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/factory/fire_extinguisher/protos/FireExtinguisher.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/hospital/protos/EmergencyExitSign.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/humans/pedestrian/protos/Pedestrian.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/trees/protos/SimpleTree.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/freight/protos/IntermodalContainer.proto"
+EXTERNPROTO "../protos/WarehouseFloor.proto"
+EXTERNPROTO "../protos/WarehouseWalls.proto"
+EXTERNPROTO "../protos/WarehouseRoof.proto"
+EXTERNPROTO "../protos/LampRow.proto"
+EXTERNPROTO "../protos/HangingSign.proto"
+EXTERNPROTO "../protos/StorageRackBlock.proto"
+EXTERNPROTO "../protos/RfidBeacon.proto"
+EXTERNPROTO "../protos/LoadingDock.proto"
+EXTERNPROTO "../protos/ChargingPad.proto"
+EXTERNPROTO "../protos/SafetyBollard.proto"
+EXTERNPROTO "../protos/YardLight.proto"
+EXTERNPROTO "../protos/GoalMarker.proto"
+EXTERNPROTO "../protos/OmniWarehouseRobot.proto"
+IMPORTABLE EXTERNPROTO "../protos/ParcelBox.proto"
+IMPORTABLE EXTERNPROTO "../protos/SpillBarrier.proto"
+
+WorldInfo {
+  info [
+    "CS 3630 Project 4: Autonomous Warehouse Challenge."
+    "The warehouse of Chapter 4 of Dellaert & Hutchinson, Introduction to Robotics and Perception."
+    "World frame = book frame: x east, y north (meters), origin at the center of grid cell (0, 0)."
+  ]
+  title "CS 3630 Warehouse Challenge"
+  FPS 30
+}
+DEF VIEWPOINT Viewpoint {
+  fieldOfView 0.849907939194678
+  orientation 0.07370159905100113 0.8612059587898644 -0.5028840530799877 0.33712524231323576
+  position 88.63895370614088 41.46426839855919 3.8999999999999995
+  near 0.25
+  bloomThreshold 3
+}
+DEF BACKGROUND TexturedBackground {
+  texture "dusk"
+  luminosity 0.5983271752842865
+}
+DEF MAIN_LIGHT DirectionalLight {
+  direction 0.35 0.55 -1
+  intensity 1.2992872817128172
+  castShadows TRUE
+}
+DEF FILL_LIGHT DirectionalLight {
+  color 0.8 0.87 1
+  direction -0.6 -0.3 -0.7
+  intensity 0.4483872407110286
+}
+WarehouseFloor {
+}
+WarehouseWalls {
+}
+DEF ROOF Group {
+  children [
+    WarehouseRoof {
+    }
+    DEF CEILING_LAMPS Group {
+      children [
+        LampRow {
+          translation 4.5 24.5 8.4
+          name "lamp row 0"
+        }
+        LampRow {
+          translation 12.5 24.5 8.4
+          name "lamp row 1"
+        }
+        LampRow {
+          translation 32.5 24.5 8.4
+          name "lamp row 2"
+        }
+        LampRow {
+          translation 49.5 24.5 8.4
+          name "lamp row 3"
+        }
+        LampRow {
+          translation 66.5 24.5 8.4
+          name "lamp row 4"
+        }
+        LampRow {
+          translation 86.5 24.5 8.4
+          name "lamp row 5"
+        }
+        LampRow {
+          translation 94.5 24.5 8.4
+          name "lamp row 6"
+        }
+      ]
+    }
+    HangingSign {
+      translation 24 9.3 7
+      name "sign A south"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 24 39.7 7
+      name "sign A north"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 41 9.3 7
+      name "sign B south"
+      sign "B"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 41 39.7 7
+      name "sign B north"
+      sign "B"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 58 9.3 7
+      name "sign C south"
+      sign "C"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 58 39.7 7
+      name "sign C north"
+      sign "C"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 75 9.3 7
+      name "sign D south"
+      sign "D"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 75 39.7 7
+      name "sign D north"
+      sign "D"
+      width 2.2
+      cableLength 1.1
+    }
+    HangingSign {
+      translation 32.5 9 7.4
+      name "sign aisle 1 south"
+      sign "AISLE 1"
+      width 3.2
+      cableLength 1.35
+    }
+    HangingSign {
+      translation 32.5 40 7.4
+      name "sign aisle 1 north"
+      sign "AISLE 1"
+      width 3.2
+      cableLength 1.35
+    }
+    HangingSign {
+      translation 49.5 9 7.4
+      name "sign aisle 2 south"
+      sign "AISLE 2"
+      width 3.2
+      cableLength 1.35
+    }
+    HangingSign {
+      translation 49.5 40 7.4
+      name "sign aisle 2 north"
+      sign "AISLE 2"
+      width 3.2
+      cableLength 1.35
+    }
+    HangingSign {
+      translation 66.5 9 7.4
+      name "sign aisle 3 south"
+      sign "AISLE 3"
+      width 3.2
+      cableLength 1.35
+    }
+    HangingSign {
+      translation 66.5 40 7.4
+      name "sign aisle 3 north"
+      sign "AISLE 3"
+      width 3.2
+      cableLength 1.35
+    }
+  ]
+}
+DEF RACK_A StorageRackBlock {
+  name "rack A"
+  seed 3
+}
+DEF RACK_B StorageRackBlock {
+  translation 41 24.5 0
+  name "rack B"
+  letter "B"
+  seed 7
+}
+DEF RACK_C StorageRackBlock {
+  translation 58 24.5 0
+  name "rack C"
+  letter "C"
+  seed 11
+}
+DEF RACK_D StorageRackBlock {
+  translation 75 24.5 0
+  name "rack D"
+  letter "D"
+  seed 5
+}
+DEF BEACON_0 RfidBeacon {
+  name "rfid beacon 0"
+}
+DEF BEACON_1 RfidBeacon {
+  translation 41 9.5 0
+  name "rfid beacon 1"
+  beaconId 1
+}
+DEF BEACON_2 RfidBeacon {
+  translation 58 9.5 0
+  name "rfid beacon 2"
+  beaconId 2
+}
+DEF BEACON_3 RfidBeacon {
+  translation 75 9.5 0
+  name "rfid beacon 3"
+  beaconId 3
+}
+DEF BEACON_4 RfidBeacon {
+  translation 24 39.5 0
+  rotation 0 0 1 3.14159
+  name "rfid beacon 4"
+  beaconId 4
+}
+DEF BEACON_5 RfidBeacon {
+  translation 41 39.5 0
+  rotation 0 0 1 3.14159
+  name "rfid beacon 5"
+  beaconId 5
+}
+DEF BEACON_6 RfidBeacon {
+  translation 58 39.5 0
+  rotation 0 0 1 3.14159
+  name "rfid beacon 6"
+  beaconId 6
+}
+DEF BEACON_7 RfidBeacon {
+  translation 75 39.5 0
+  rotation 0 0 1 3.14159
+  name "rfid beacon 7"
+  beaconId 7
+}
+DEF DOCK_1 LoadingDock {
+  hidden translation_2 0 0 0.4799686235366725
+  name "dock 1"
+}
+DEF DOCK_2 LoadingDock {
+  hidden translation_2 0 0 0.4799686235366725
+  translation 99.5 25 0
+  name "dock 2"
+  dockNumber 2
+  truckCab TRUE
+}
+DEF DOCK_3 LoadingDock {
+  hidden translation_2 0 0 0.4799686235366725
+  translation 99.5 40 0
+  name "dock 3"
+  dockNumber 3
+  doorTranslation 0 0 2.95
+  statusColor 0.1 1 0.25
+  truckCab TRUE
+  cabColor 0.05 0.25 0.55
+}
+DEF FORKLIFT_0 Forklift {
+  translation 3.81 1.8 0.81
+  name "forklift 0"
+  enablePhysics FALSE
+}
+DEF FORKLIFT_1 Forklift {
+  translation 93.19 1.8 0.81
+  rotation 0 0 1 3.141592653589793
+  name "forklift 1"
+  enablePhysics FALSE
+}
+DEF PICKUP_MARKER GoalMarker {
+  translation 0 0 -20
+  rotation 0 0 1 -1.7856527015811707
+  color 1 0.9793461918497751 0.8967309592488757
+}
+DEF DROPOFF_MARKER GoalMarker {
+  translation 0 0 -20
+  rotation 0 0 1 -2.7743706143594835
+  color 0.25 1 0.45
+}
+DEF PING_RING Transform {
+  translation 0 0 -2
+  scale 0.5 0.5 0.5
+  children [
+    Shape {
+      appearance DEF PING_RING_MATERIAL PBRAppearance {
+        baseColor 0 0 0
+        baseColorMap DEF PING_RING_TEXTURE ImageTexture {
+          url [
+            "../textures/ping_ring.png"
+          ]
+        }
+        transparency 0.99
+        roughness 1
+        metalness 0
+        emissiveColor 0 0.85 1
+        emissiveColorMap USE PING_RING_TEXTURE
+        emissiveIntensity 3
+      }
+      geometry Plane {
+        size 2 2
+      }
+      castShadows FALSE
+      isPickable FALSE
+    }
+  ]
+}
+DEF AMR OmniWarehouseRobot {
+  translation 95.99243350042677 39.98946160778723 0
+  controller "warehouse_mission"
+  supervisor TRUE
+  bodyColor 0.86 0.2 0.66
+  accentColor 0.08 0.06 0.13
+  ledColor 1 0.7580862745097572 0.1871686274510413
+  irisColor 1 0.7580862745097572 0.1871686274510413
+  tagColor 0.08 0.14 0.04
+  wheel0Rotation 1 0 0 1.2149795521594484
+  wheel1Rotation 1 0 0 -1.5850425836518758
+  wheel2Rotation 1 0 0 0.37009088407271923
+  eyeRotation 0 0 1 0.0001891131939384394
+  holoTranslation 0 0 -5
+}
+ChargingPad {
+  translation 0.3 20.5 0
+  name "charging pad 1"
+}
+ChargingPad {
+  translation 0.3 24.5 0
+  name "charging pad 2"
+}
+ChargingPad {
+  translation 0.3 28.5 0
+  name "charging pad 3"
+}
+OmniWarehouseRobot {
+  translation 0.3 20.5 0.028
+  name "fleet robot 1"
+  bodyColor 0.92 0.92 0.9
+  accentColor 0.9 0.35 0.05
+  ledColor 0.1 1 0.3
+  irisColor 0.1 1 0.3
+  withDevices FALSE
+}
+OmniWarehouseRobot {
+  translation 0.3 28.5 0.028
+  name "fleet robot 2"
+  bodyColor 0.1 0.62 0.72
+  accentColor 0.08 0.1 0.14
+  ledColor 0.1 1 0.3
+  irisColor 0.1 1 0.3
+  withDevices FALSE
+}
+HangingSign {
+  translation -0.44 24.5 3.6
+  rotation 0 0 1 1.5708
+  name "banner charging"
+  sign "CHARGING"
+  width 4.2
+  doubleSided FALSE
+  glow 0.6
+}
+HangingSign {
+  translation -0.44 4.5 4.6
+  rotation 0 0 1 1.5708
+  name "banner receiving south"
+  sign "RECEIVING"
+  width 5.2
+  doubleSided FALSE
+  glow 0.6
+}
+HangingSign {
+  translation -0.44 44.5 4.6
+  rotation 0 0 1 1.5708
+  name "banner receiving north"
+  sign "RECEIVING"
+  width 5.2
+  doubleSided FALSE
+  glow 0.6
+}
+HangingSign {
+  translation 99.44 17.5 4.6
+  rotation 0 0 1 -1.5708
+  name "banner shipping south"
+  sign "SHIPPING"
+  width 5.2
+  doubleSided FALSE
+  glow 0.6
+}
+HangingSign {
+  translation 99.44 32.5 4.6
+  rotation 0 0 1 -1.5708
+  name "banner shipping north"
+  sign "SHIPPING"
+  width 5.2
+  doubleSided FALSE
+  glow 0.6
+}
+HangingSign {
+  translation 49.5 -0.86 7.2
+  name "facility sign"
+  sign "FACILITY"
+  width 18
+  doubleSided FALSE
+  glow 0.8
+}
+WoodenPalletStack {
+  translation 0.05 3 0
+  rotation 0 0 1 1.5708
+  name "pallet stack 1"
+  palletNumber 7
+}
+WoodenPalletStack {
+  translation 0.05 4.4 0
+  rotation 0 0 1 1.5708
+  name "pallet stack 2"
+  palletNumber 4
+}
+WoodenPallet {
+  translation 0.05 6.4 0
+  rotation 0 0 1 1.5708
+  name "receiving pallet 1"
+}
+CardboardBox {
+  translation 0.05 6.15 0.39
+  name "receiving box 1"
+  size 0.7 0.45 0.5
+}
+CardboardBox {
+  translation 0.05 6.65 0.37
+  name "receiving box 2"
+  size 0.7 0.45 0.46
+}
+CardboardBox {
+  translation 0.05 6.35 0.84
+  rotation 0 0 1 0.1
+  name "receiving box 3"
+  size 0.55 0.5 0.4
+}
+PlasticCrate {
+  translation 0 9.4 0
+  name "crate 1"
+  size 0.6 0.4 0.3
+  color 0.1 0.35 0.8
+}
+PlasticCrate {
+  translation 0 9.4 0.3
+  name "crate 2"
+  size 0.6 0.4 0.3
+  color 0.1 0.35 0.8
+}
+PlasticCrate {
+  translation 0 9.85 0
+  name "crate 3"
+  size 0.6 0.4 0.3
+  color 0.1 0.35 0.8
+}
+PlasticCrate {
+  translation 0 10.3 0
+  name "crate 4"
+  size 0.6 0.4 0.3
+  color 0.85 0.3 0.05
+}
+PlasticCrate {
+  translation 0 10.3 0.3
+  name "crate 5"
+  size 0.6 0.4 0.3
+  color 0.85 0.3 0.05
+}
+PlasticCrate {
+  translation 0 10.3 0.6
+  name "crate 6"
+  size 0.6 0.4 0.3
+  color 0.85 0.3 0.05
+}
+WoodenPalletStack {
+  translation 0.05 34 0
+  rotation 0 0 1 1.5708
+  name "pallet stack 3"
+  palletNumber 9
+}
+WoodenPallet {
+  translation 0.05 36 0
+  rotation 0 0 1 1.5708
+  name "receiving pallet 2"
+}
+CardboardBox {
+  translation 0.05 35.75 0.44
+  name "receiving box 4"
+  size 0.7 0.45 0.6
+}
+CardboardBox {
+  translation 0.05 36.25 0.39
+  name "receiving box 5"
+  size 0.7 0.45 0.5
+}
+Pedestrian {
+  translation 0.75 12.6 1.27
+  rotation 0 0 1 0.3
+  name "worker receiving"
+  controller "<none>"
+  shirtColor 0.95 0.55 0.05
+  pantsColor 0.12 0.14 0.2
+}
+Pedestrian {
+  translation 98.75 18.8 1.27
+  rotation 0 0 1 3.4
+  name "worker shipping"
+  controller "<none>"
+  shirtColor 0.95 0.85 0.1
+  pantsColor 0.15 0.17 0.22
+}
+Pedestrian {
+  translation 44 48.7 1.27
+  rotation 0 0 1 -1.3
+  name "worker north"
+  controller "<none>"
+  shirtColor 0.2 0.6 0.95
+  pantsColor 0.2 0.2 0.25
+}
+WoodenPallet {
+  translation 99 15.5 0
+  rotation 0 0 1 1.5708
+  name "outbound pallet 1"
+}
+CardboardBox {
+  translation 99 15.3 0.4
+  name "outbound box 1"
+  size 0.6 0.35 0.52
+}
+CardboardBox {
+  translation 99 15.72 0.36
+  name "outbound box 2"
+  size 0.6 0.4 0.44
+}
+WoodenPalletStack {
+  translation 99 34.5 0
+  rotation 0 0 1 1.5708
+  name "pallet stack 4"
+  palletNumber 5
+}
+WoodenPallet {
+  translation 18 49 0
+  name "north pallet 1"
+}
+CardboardBox {
+  translation 17.75 49 0.39
+  name "north box 1"
+  size 0.5 0.7 0.5
+}
+CardboardBox {
+  translation 18.3 49 0.34
+  name "north box 2"
+  size 0.5 0.7 0.4
+}
+WoodenPalletStack {
+  translation 62 49 0
+  name "pallet stack 5"
+  palletNumber 6
+}
+PlasticCrate {
+  translation 80 49.1 0
+  name "crate 7"
+  size 0.6 0.4 0.3
+  color 0.2 0.6 0.25
+}
+PlasticCrate {
+  translation 80.65 49.1 0
+  name "crate 8"
+  size 0.6 0.4 0.3
+  color 0.2 0.6 0.25
+}
+PlasticCrate {
+  translation 80.3 49.1 0.3
+  name "crate 9"
+  size 0.6 0.4 0.3
+  color 0.2 0.6 0.25
+}
+WoodenPalletStack {
+  translation 28 0 0
+  name "pallet stack 6"
+  palletNumber 3
+}
+CardboardBox {
+  translation 55 0 0.3
+  name "south box 1"
+}
+CardboardBox {
+  translation 55.65 0.05 0.25
+  rotation 0 0 1 0.2
+  name "south box 2"
+  size 0.5 0.5 0.5
+}
+FireExtinguisher {
+  translation -0.3 16.5 0
+  rotation 0 0 1 1.5708
+  name "extinguisher west 1"
+  enablePhysics FALSE
+}
+FireExtinguisher {
+  translation -0.3 42.5 0
+  rotation 0 0 1 1.5708
+  name "extinguisher west 2"
+  enablePhysics FALSE
+}
+FireExtinguisher {
+  translation 99.3 21 0
+  rotation 0 0 1 -1.5708
+  name "extinguisher east 1"
+  enablePhysics FALSE
+}
+FireExtinguisher {
+  translation 99.3 36.2 0
+  rotation 0 0 1 -1.5708
+  name "extinguisher east 2"
+  enablePhysics FALSE
+}
+FireExtinguisher {
+  translation 34.5 49.3 0
+  rotation 0 0 1 3.14159
+  name "extinguisher north"
+  enablePhysics FALSE
+}
+FireExtinguisher {
+  translation 64.5 -0.3 0
+  name "extinguisher south"
+  enablePhysics FALSE
+}
+EmergencyExitSign {
+  translation -0.45 31.2 2.65
+  rotation 0 0 1 1.5708
+  name "exit sign west"
+}
+EmergencyExitSign {
+  translation 45 -0.45 2.65
+  name "exit sign south"
+}
+EmergencyExitSign {
+  translation 30 49.45 2.65
+  rotation 0 0 1 3.14159
+  name "exit sign north"
+}
+SafetyBollard {
+  translation 1.1 17.6 0
+  name "bollard charging 1"
+}
+SafetyBollard {
+  translation 1.1 31.4 0
+  name "bollard charging 2"
+}
+YardLight {
+  translation 12 -9 -1.2
+  rotation 0 0 1 1.5708
+  name "yard light south 0"
+}
+YardLight {
+  translation 30 -9 -1.2
+  rotation 0 0 1 1.5708
+  name "yard light south 1"
+}
+YardLight {
+  translation 68 -9 -1.2
+  rotation 0 0 1 1.5708
+  name "yard light south 2"
+}
+YardLight {
+  translation 86 -9 -1.2
+  rotation 0 0 1 1.5708
+  name "yard light south 3"
+}
+YardLight {
+  translation -9 8 -1.2
+  name "yard light west 4"
+}
+YardLight {
+  translation -9 24.5 -1.2
+  name "yard light west 5"
+}
+YardLight {
+  translation -9 41 -1.2
+  name "yard light west 6"
+}
+YardLight {
+  translation 12 58 -1.2
+  rotation 0 0 1 -1.5708
+  name "yard light north 7"
+}
+YardLight {
+  translation 30 58 -1.2
+  rotation 0 0 1 -1.5708
+  name "yard light north 8"
+}
+YardLight {
+  translation 50 58 -1.2
+  rotation 0 0 1 -1.5708
+  name "yard light north 9"
+}
+YardLight {
+  translation 68 58 -1.2
+  rotation 0 0 1 -1.5708
+  name "yard light north 10"
+}
+YardLight {
+  translation 86 58 -1.2
+  rotation 0 0 1 -1.5708
+  name "yard light north 11"
+}
+YardLight {
+  translation 124 2.5 -1.2
+  rotation 0 0 1 3.14159
+  name "yard light east 12"
+}
+YardLight {
+  translation 124 17.5 -1.2
+  rotation 0 0 1 3.14159
+  name "yard light east 13"
+}
+YardLight {
+  translation 124 32.5 -1.2
+  rotation 0 0 1 3.14159
+  name "yard light east 14"
+}
+YardLight {
+  translation 124 47.5 -1.2
+  rotation 0 0 1 3.14159
+  name "yard light east 15"
+}
+SimpleTree {
+  translation -24 0 -1.2
+  name "tree 0"
+  type "oak tree"
+  height 8
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation -24 14 -1.2
+  name "tree 1"
+  type "spruce"
+  height 9
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation -24 28 -1.2
+  name "tree 2"
+  type "oak tree"
+  height 10
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation -24 42 -1.2
+  name "tree 3"
+  type "spruce"
+  height 8
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation -24 56 -1.2
+  name "tree 4"
+  type "oak tree"
+  height 9
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 8 -24 -1.2
+  name "tree 5"
+  type "spruce"
+  height 9
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 26 -24 -1.2
+  name "tree 6"
+  type "oak tree"
+  height 10
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 44 -24 -1.2
+  name "tree 7"
+  type "spruce"
+  height 8
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 62 -24 -1.2
+  name "tree 8"
+  type "oak tree"
+  height 9
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 80 -24 -1.2
+  name "tree 9"
+  type "spruce"
+  height 10
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 98 -24 -1.2
+  name "tree 10"
+  type "oak tree"
+  height 8
+  radius 3.2
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation -10 70 -1.2
+  name "tree 11"
+  type "oak tree"
+  height 9
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 6 70 -1.2
+  name "tree 12"
+  type "spruce"
+  height 10
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 22 70 -1.2
+  name "tree 13"
+  type "oak tree"
+  height 11
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 38 70 -1.2
+  name "tree 14"
+  type "spruce"
+  height 9
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 54 70 -1.2
+  name "tree 15"
+  type "oak tree"
+  height 10
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 70 70 -1.2
+  name "tree 16"
+  type "spruce"
+  height 11
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 86 70 -1.2
+  name "tree 17"
+  type "oak tree"
+  height 9
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 102 70 -1.2
+  name "tree 18"
+  type "spruce"
+  height 10
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 138 -10 -1.2
+  name "tree 19"
+  type "spruce"
+  height 9
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 138 4 -1.2
+  name "tree 20"
+  type "oak tree"
+  height 10
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 138 18 -1.2
+  name "tree 21"
+  type "spruce"
+  height 9
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 138 32 -1.2
+  name "tree 22"
+  type "oak tree"
+  height 10
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 138 46 -1.2
+  name "tree 23"
+  type "spruce"
+  height 9
+  radius 3.4
+  enableBoundingObject FALSE
+}
+SimpleTree {
+  translation 138 60 -1.2
+  name "tree 24"
+  type "oak tree"
+  height 10
+  radius 3.4
+  enableBoundingObject FALSE
+}
+IntermodalContainer {
+  translation 116 62 -1.2
+  rotation 0 0 1 0.05
+  name "container 1"
+  color 0.72 0.12 0.08
+}
+IntermodalContainer {
+  translation 116 62 1.39
+  rotation 0 0 1 0.02
+  name "container 2"
+  color 0.05 0.3 0.55
+}
+IntermodalContainer {
+  translation 116 65 -1.2
+  name "container 3"
+  color 0.9 0.55 0.05
+}
+DEF FX_RING Transform {
+  translation 0 0 -2
+  scale 5.999788888888887 5.999788888888887 1
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 0
+        transparency 0.9987427555555544
+        roughness 1
+        metalness 0
+        emissiveColor 0.2235294117647059 1 0.5333333333333333
+      }
+      geometry IndexedFaceSet {
+        coord Coordinate {
+          point [
+            0.93 0 0, 1 0 0, 0.9265 0.0811 0, 0.9962 0.0872 0, 0.9159 0.1615 0, 0.9848 0.1736 0, 0.8983 0.2407 0, 0.9659 0.2588 0, 0.8739 0.3181 0, 0.9397 0.342 0, 0.8429 0.393 0, 0.9063 0.4226 0, 0.8054 0.465 0, 0.866 0.5 0, 0.7618 0.5334 0, 0.8192 0.5736 0, 0.7124 0.5978 0, 0.766 0.6428 0, 0.6576 0.6576 0, 0.7071 0.7071 0, 0.5978 0.7124 0, 0.6428 0.766 0, 0.5334 0.7618 0, 0.5736 0.8192 0, 0.465 0.8054 0, 0.5 0.866 0, 0.393 0.8429 0, 0.4226 0.9063 0, 0.3181 0.8739 0, 0.342 0.9397 0, 0.2407 0.8983 0, 0.2588 0.9659 0, 0.1615 0.9159 0, 0.1736 0.9848 0, 0.0811 0.9265 0, 0.0872 0.9962 0, 0 0.93 0, 0 1 0, -0.0811 0.9265 0, -0.0872 0.9962 0, -0.1615 0.9159 0, -0.1736 0.9848 0, -0.2407 0.8983 0, -0.2588 0.9659 0, -0.3181 0.8739 0, -0.342 0.9397 0, -0.393 0.8429 0, -0.4226 0.9063 0, -0.465 0.8054 0, -0.5 0.866 0, -0.5334 0.7618 0, -0.5736 0.8192 0, -0.5978 0.7124 0, -0.6428 0.766 0, -0.6576 0.6576 0, -0.7071 0.7071 0, -0.7124 0.5978 0, -0.766 0.6428 0, -0.7618 0.5334 0, -0.8192 0.5736 0, -0.8054 0.465 0, -0.866 0.5 0, -0.8429 0.393 0, -0.9063 0.4226 0, -0.8739 0.3181 0, -0.9397 0.342 0, -0.8983 0.2407 0, -0.9659 0.2588 0, -0.9159 0.1615 0, -0.9848 0.1736 0, -0.9265 0.0811 0, -0.9962 0.0872 0, -0.93 0 0, -1 0 0, -0.9265 -0.0811 0, -0.9962 -0.0872 0, -0.9159 -0.1615 0, -0.9848 -0.1736 0, -0.8983 -0.2407 0, -0.9659 -0.2588 0, -0.8739 -0.3181 0, -0.9397 -0.342 0, -0.8429 -0.393 0, -0.9063 -0.4226 0, -0.8054 -0.465 0, -0.866 -0.5 0, -0.7618 -0.5334 0, -0.8192 -0.5736 0, -0.7124 -0.5978 0, -0.766 -0.6428 0, -0.6576 -0.6576 0, -0.7071 -0.7071 0, -0.5978 -0.7124 0, -0.6428 -0.766 0, -0.5334 -0.7618 0, -0.5736 -0.8192 0, -0.465 -0.8054 0, -0.5 -0.866 0, -0.393 -0.8429 0, -0.4226 -0.9063 0, -0.3181 -0.8739 0, -0.342 -0.9397 0, -0.2407 -0.8983 0, -0.2588 -0.9659 0, -0.1615 -0.9159 0, -0.1736 -0.9848 0, -0.0811 -0.9265 0, -0.0872 -0.9962 0, 0 -0.93 0, 0 -1 0, 0.0811 -0.9265 0, 0.0872 -0.9962 0, 0.1615 -0.9159 0, 0.1736 -0.9848 0, 0.2407 -0.8983 0, 0.2588 -0.9659 0, 0.3181 -0.8739 0, 0.342 -0.9397 0, 0.393 -0.8429 0, 0.4226 -0.9063 0, 0.465 -0.8054 0, 0.5 -0.866 0, 0.5334 -0.7618 0, 0.5736 -0.8192 0, 0.5978 -0.7124 0, 0.6428 -0.766 0, 0.6576 -0.6576 0, 0.7071 -0.7071 0, 0.7124 -0.5978 0, 0.766 -0.6428 0, 0.7618 -0.5334 0, 0.8192 -0.5736 0, 0.8054 -0.465 0, 0.866 -0.5 0, 0.8429 -0.393 0, 0.9063 -0.4226 0, 0.8739 -0.3181 0, 0.9397 -0.342 0, 0.8983 -0.2407 0, 0.9659 -0.2588 0, 0.9159 -0.1615 0, 0.9848 -0.1736 0, 0.9265 -0.0811 0, 0.9962 -0.0872 0, 0.93 0 0, 1 0 0
+          ]
+        }
+        coordIndex [
+          0, 1, 3, 2, -1, 2, 3, 5, 4, -1, 4, 5, 7, 6, -1, 6, 7, 9, 8, -1, 8, 9, 11, 10, -1, 10, 11, 13, 12, -1, 12, 13, 15, 14, -1, 14, 15, 17, 16, -1, 16, 17, 19, 18, -1, 18, 19, 21, 20, -1, 20, 21, 23, 22, -1, 22, 23, 25, 24, -1, 24, 25, 27, 26, -1, 26, 27, 29, 28, -1, 28, 29, 31, 30, -1, 30, 31, 33, 32, -1, 32, 33, 35, 34, -1, 34, 35, 37, 36, -1, 36, 37, 39, 38, -1, 38, 39, 41, 40, -1, 40, 41, 43, 42, -1, 42, 43, 45, 44, -1, 44, 45, 47, 46, -1, 46, 47, 49, 48, -1, 48, 49, 51, 50, -1, 50, 51, 53, 52, -1, 52, 53, 55, 54, -1, 54, 55, 57, 56, -1, 56, 57, 59, 58, -1, 58, 59, 61, 60, -1, 60, 61, 63, 62, -1, 62, 63, 65, 64, -1, 64, 65, 67, 66, -1, 66, 67, 69, 68, -1, 68, 69, 71, 70, -1, 70, 71, 73, 72, -1, 72, 73, 75, 74, -1, 74, 75, 77, 76, -1, 76, 77, 79, 78, -1, 78, 79, 81, 80, -1, 80, 81, 83, 82, -1, 82, 83, 85, 84, -1, 84, 85, 87, 86, -1, 86, 87, 89, 88, -1, 88, 89, 91, 90, -1, 90, 91, 93, 92, -1, 92, 93, 95, 94, -1, 94, 95, 97, 96, -1, 96, 97, 99, 98, -1, 98, 99, 101, 100, -1, 100, 101, 103, 102, -1, 102, 103, 105, 104, -1, 104, 105, 107, 106, -1, 106, 107, 109, 108, -1, 108, 109, 111, 110, -1, 110, 111, 113, 112, -1, 112, 113, 115, 114, -1, 114, 115, 117, 116, -1, 116, 117, 119, 118, -1, 118, 119, 121, 120, -1, 120, 121, 123, 122, -1, 122, 123, 125, 124, -1, 124, 125, 127, 126, -1, 126, 127, 129, 128, -1, 128, 129, 131, 130, -1, 130, 131, 133, 132, -1, 132, 133, 135, 134, -1, 134, 135, 137, 136, -1, 136, 137, 139, 138, -1, 138, 139, 141, 140, -1, 140, 141, 143, 142, -1, 142, 143, 145, 144, -1
+        ]
+      }
+      castShadows FALSE
+      isPickable FALSE
+    }
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 0
+        transparency 0.9994971022222218
+        roughness 1
+        metalness 0
+        emissiveColor 0.2235294117647059 1 0.5333333333333333
+      }
+      geometry IndexedFaceSet {
+        coord Coordinate {
+          point [
+            0.8 0 0, 0.93 0 0, 0.797 0.0697 0, 0.9265 0.0811 0, 0.7878 0.1389 0, 0.9159 0.1615 0, 0.7727 0.2071 0, 0.8983 0.2407 0, 0.7518 0.2736 0, 0.8739 0.3181 0, 0.725 0.3381 0, 0.8429 0.393 0, 0.6928 0.4 0, 0.8054 0.465 0, 0.6553 0.4589 0, 0.7618 0.5334 0, 0.6128 0.5142 0, 0.7124 0.5978 0, 0.5657 0.5657 0, 0.6576 0.6576 0, 0.5142 0.6128 0, 0.5978 0.7124 0, 0.4589 0.6553 0, 0.5334 0.7618 0, 0.4 0.6928 0, 0.465 0.8054 0, 0.3381 0.725 0, 0.393 0.8429 0, 0.2736 0.7518 0, 0.3181 0.8739 0, 0.2071 0.7727 0, 0.2407 0.8983 0, 0.1389 0.7878 0, 0.1615 0.9159 0, 0.0697 0.797 0, 0.0811 0.9265 0, 0 0.8 0, 0 0.93 0, -0.0697 0.797 0, -0.0811 0.9265 0, -0.1389 0.7878 0, -0.1615 0.9159 0, -0.2071 0.7727 0, -0.2407 0.8983 0, -0.2736 0.7518 0, -0.3181 0.8739 0, -0.3381 0.725 0, -0.393 0.8429 0, -0.4 0.6928 0, -0.465 0.8054 0, -0.4589 0.6553 0, -0.5334 0.7618 0, -0.5142 0.6128 0, -0.5978 0.7124 0, -0.5657 0.5657 0, -0.6576 0.6576 0, -0.6128 0.5142 0, -0.7124 0.5978 0, -0.6553 0.4589 0, -0.7618 0.5334 0, -0.6928 0.4 0, -0.8054 0.465 0, -0.725 0.3381 0, -0.8429 0.393 0, -0.7518 0.2736 0, -0.8739 0.3181 0, -0.7727 0.2071 0, -0.8983 0.2407 0, -0.7878 0.1389 0, -0.9159 0.1615 0, -0.797 0.0697 0, -0.9265 0.0811 0, -0.8 0 0, -0.93 0 0, -0.797 -0.0697 0, -0.9265 -0.0811 0, -0.7878 -0.1389 0, -0.9159 -0.1615 0, -0.7727 -0.2071 0, -0.8983 -0.2407 0, -0.7518 -0.2736 0, -0.8739 -0.3181 0, -0.725 -0.3381 0, -0.8429 -0.393 0, -0.6928 -0.4 0, -0.8054 -0.465 0, -0.6553 -0.4589 0, -0.7618 -0.5334 0, -0.6128 -0.5142 0, -0.7124 -0.5978 0, -0.5657 -0.5657 0, -0.6576 -0.6576 0, -0.5142 -0.6128 0, -0.5978 -0.7124 0, -0.4589 -0.6553 0, -0.5334 -0.7618 0, -0.4 -0.6928 0, -0.465 -0.8054 0, -0.3381 -0.725 0, -0.393 -0.8429 0, -0.2736 -0.7518 0, -0.3181 -0.8739 0, -0.2071 -0.7727 0, -0.2407 -0.8983 0, -0.1389 -0.7878 0, -0.1615 -0.9159 0, -0.0697 -0.797 0, -0.0811 -0.9265 0, 0 -0.8 0, 0 -0.93 0, 0.0697 -0.797 0, 0.0811 -0.9265 0, 0.1389 -0.7878 0, 0.1615 -0.9159 0, 0.2071 -0.7727 0, 0.2407 -0.8983 0, 0.2736 -0.7518 0, 0.3181 -0.8739 0, 0.3381 -0.725 0, 0.393 -0.8429 0, 0.4 -0.6928 0, 0.465 -0.8054 0, 0.4589 -0.6553 0, 0.5334 -0.7618 0, 0.5142 -0.6128 0, 0.5978 -0.7124 0, 0.5657 -0.5657 0, 0.6576 -0.6576 0, 0.6128 -0.5142 0, 0.7124 -0.5978 0, 0.6553 -0.4589 0, 0.7618 -0.5334 0, 0.6928 -0.4 0, 0.8054 -0.465 0, 0.725 -0.3381 0, 0.8429 -0.393 0, 0.7518 -0.2736 0, 0.8739 -0.3181 0, 0.7727 -0.2071 0, 0.8983 -0.2407 0, 0.7878 -0.1389 0, 0.9159 -0.1615 0, 0.797 -0.0697 0, 0.9265 -0.0811 0, 0.8 0 0, 0.93 0 0
+          ]
+        }
+        coordIndex [
+          0, 1, 3, 2, -1, 2, 3, 5, 4, -1, 4, 5, 7, 6, -1, 6, 7, 9, 8, -1, 8, 9, 11, 10, -1, 10, 11, 13, 12, -1, 12, 13, 15, 14, -1, 14, 15, 17, 16, -1, 16, 17, 19, 18, -1, 18, 19, 21, 20, -1, 20, 21, 23, 22, -1, 22, 23, 25, 24, -1, 24, 25, 27, 26, -1, 26, 27, 29, 28, -1, 28, 29, 31, 30, -1, 30, 31, 33, 32, -1, 32, 33, 35, 34, -1, 34, 35, 37, 36, -1, 36, 37, 39, 38, -1, 38, 39, 41, 40, -1, 40, 41, 43, 42, -1, 42, 43, 45, 44, -1, 44, 45, 47, 46, -1, 46, 47, 49, 48, -1, 48, 49, 51, 50, -1, 50, 51, 53, 52, -1, 52, 53, 55, 54, -1, 54, 55, 57, 56, -1, 56, 57, 59, 58, -1, 58, 59, 61, 60, -1, 60, 61, 63, 62, -1, 62, 63, 65, 64, -1, 64, 65, 67, 66, -1, 66, 67, 69, 68, -1, 68, 69, 71, 70, -1, 70, 71, 73, 72, -1, 72, 73, 75, 74, -1, 74, 75, 77, 76, -1, 76, 77, 79, 78, -1, 78, 79, 81, 80, -1, 80, 81, 83, 82, -1, 82, 83, 85, 84, -1, 84, 85, 87, 86, -1, 86, 87, 89, 88, -1, 88, 89, 91, 90, -1, 90, 91, 93, 92, -1, 92, 93, 95, 94, -1, 94, 95, 97, 96, -1, 96, 97, 99, 98, -1, 98, 99, 101, 100, -1, 100, 101, 103, 102, -1, 102, 103, 105, 104, -1, 104, 105, 107, 106, -1, 106, 107, 109, 108, -1, 108, 109, 111, 110, -1, 110, 111, 113, 112, -1, 112, 113, 115, 114, -1, 114, 115, 117, 116, -1, 116, 117, 119, 118, -1, 118, 119, 121, 120, -1, 120, 121, 123, 122, -1, 122, 123, 125, 124, -1, 124, 125, 127, 126, -1, 126, 127, 129, 128, -1, 128, 129, 131, 130, -1, 130, 131, 133, 132, -1, 132, 133, 135, 134, -1, 134, 135, 137, 136, -1, 136, 137, 139, 138, -1, 138, 139, 141, 140, -1, 140, 141, 143, 142, -1, 142, 143, 145, 144, -1
+        ]
+      }
+      castShadows FALSE
+      isPickable FALSE
+    }
+  ]
+}
+DEF HOLO_RETICLE Transform {
+  translation 0 0 -5
+  rotation 0 0 1 0.23311589563394008
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0 0
+        transparency 0.07999999999999996
+        roughness 1
+        metalness 0
+        emissiveColor 1 0.23921568627450981 0.8627450980392157
+      }
+      geometry IndexedFaceSet {
+        coord Coordinate {
+          point [
+            0.9061 0.1273 0, 0.9754 0.1371 0, 0.8872 0.2239 0, 0.955 0.2411 0, 0.858 0.3179 0, 0.9236 0.3423 0, 0.8189 0.4083 0, 0.8815 0.4395 0, 0.7703 0.4939 0, 0.8292 0.5317 0, 0.7128 0.5738 0, 0.7673 0.6177 0, 0.647 0.647 0, 0.6965 0.6965 0, 0.5738 0.7128 0, 0.6177 0.7673 0, 0.4939 0.7703 0, 0.5317 0.8292 0, 0.4083 0.8189 0, 0.4395 0.8815 0, 0.3179 0.858 0, 0.3423 0.9236 0, 0.2239 0.8872 0, 0.2411 0.955 0, 0.1273 0.9061 0, 0.1371 0.9754 0, -0.1273 0.9061 0, -0.1371 0.9754 0, -0.2239 0.8872 0, -0.2411 0.955 0, -0.3179 0.858 0, -0.3423 0.9236 0, -0.4083 0.8189 0, -0.4395 0.8815 0, -0.4939 0.7703 0, -0.5317 0.8292 0, -0.5738 0.7128 0, -0.6177 0.7673 0, -0.647 0.647 0, -0.6965 0.6965 0, -0.7128 0.5738 0, -0.7673 0.6177 0, -0.7703 0.4939 0, -0.8292 0.5317 0, -0.8189 0.4083 0, -0.8815 0.4395 0, -0.858 0.3179 0, -0.9236 0.3423 0, -0.8872 0.2239 0, -0.955 0.2411 0, -0.9061 0.1273 0, -0.9754 0.1371 0, -0.9061 -0.1273 0, -0.9754 -0.1371 0, -0.8872 -0.2239 0, -0.955 -0.2411 0, -0.858 -0.3179 0, -0.9236 -0.3423 0, -0.8189 -0.4083 0, -0.8815 -0.4395 0, -0.7703 -0.4939 0, -0.8292 -0.5317 0, -0.7128 -0.5738 0, -0.7673 -0.6177 0, -0.647 -0.647 0, -0.6965 -0.6965 0, -0.5738 -0.7128 0, -0.6177 -0.7673 0, -0.4939 -0.7703 0, -0.5317 -0.8292 0, -0.4083 -0.8189 0, -0.4395 -0.8815 0, -0.3179 -0.858 0, -0.3423 -0.9236 0, -0.2239 -0.8872 0, -0.2411 -0.955 0, -0.1273 -0.9061 0, -0.1371 -0.9754 0, 0.1273 -0.9061 0, 0.1371 -0.9754 0, 0.2239 -0.8872 0, 0.2411 -0.955 0, 0.3179 -0.858 0, 0.3423 -0.9236 0, 0.4083 -0.8189 0, 0.4395 -0.8815 0, 0.4939 -0.7703 0, 0.5317 -0.8292 0, 0.5738 -0.7128 0, 0.6177 -0.7673 0, 0.647 -0.647 0, 0.6965 -0.6965 0, 0.7128 -0.5738 0, 0.7673 -0.6177 0, 0.7703 -0.4939 0, 0.8292 -0.5317 0, 0.8189 -0.4083 0, 0.8815 -0.4395 0, 0.858 -0.3179 0, 0.9236 -0.3423 0, 0.8872 -0.2239 0, 0.955 -0.2411 0, 0.9061 -0.1273 0, 0.9754 -0.1371 0, 1.04 -0.025 0, 1.26 -0.025 0, 1.26 0.025 0, 1.04 0.025 0, 0.025 1.04 0, 0.025 1.26 0, -0.025 1.26 0, -0.025 1.04 0, -1.04 0.025 0, -1.26 0.025 0, -1.26 -0.025 0, -1.04 -0.025 0, -0.025 -1.04 0, -0.025 -1.26 0, 0.025 -1.26 0, 0.025 -1.04 0
+          ]
+        }
+        coordIndex [
+          0, 1, 3, 2, -1, 2, 3, 5, 4, -1, 4, 5, 7, 6, -1, 6, 7, 9, 8, -1, 8, 9, 11, 10, -1, 10, 11, 13, 12, -1, 12, 13, 15, 14, -1, 14, 15, 17, 16, -1, 16, 17, 19, 18, -1, 18, 19, 21, 20, -1, 20, 21, 23, 22, -1, 22, 23, 25, 24, -1, 26, 27, 29, 28, -1, 28, 29, 31, 30, -1, 30, 31, 33, 32, -1, 32, 33, 35, 34, -1, 34, 35, 37, 36, -1, 36, 37, 39, 38, -1, 38, 39, 41, 40, -1, 40, 41, 43, 42, -1, 42, 43, 45, 44, -1, 44, 45, 47, 46, -1, 46, 47, 49, 48, -1, 48, 49, 51, 50, -1, 52, 53, 55, 54, -1, 54, 55, 57, 56, -1, 56, 57, 59, 58, -1, 58, 59, 61, 60, -1, 60, 61, 63, 62, -1, 62, 63, 65, 64, -1, 64, 65, 67, 66, -1, 66, 67, 69, 68, -1, 68, 69, 71, 70, -1, 70, 71, 73, 72, -1, 72, 73, 75, 74, -1, 74, 75, 77, 76, -1, 78, 79, 81, 80, -1, 80, 81, 83, 82, -1, 82, 83, 85, 84, -1, 84, 85, 87, 86, -1, 86, 87, 89, 88, -1, 88, 89, 91, 90, -1, 90, 91, 93, 92, -1, 92, 93, 95, 94, -1, 94, 95, 97, 96, -1, 96, 97, 99, 98, -1, 98, 99, 101, 100, -1, 100, 101, 103, 102, -1, 104, 105, 106, 107, -1, 108, 109, 110, 111, -1, 112, 113, 114, 115, -1, 116, 117, 118, 119, -1
+        ]
+      }
+      castShadows FALSE
+      isPickable FALSE
+    }
+  ]
+}
+DEF ORDER_PARCEL_1 ParcelBox {
+  translation 103 40 0.64
+  name "order parcel 1"
+}
+DEF OBSTACLE_0 SpillBarrier {
+  translation 76 4 0
+  name "obstacle 0"
+  flasher 0.3
+}

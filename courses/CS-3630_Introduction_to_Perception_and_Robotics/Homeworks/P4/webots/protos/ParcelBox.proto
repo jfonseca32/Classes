@@ -1,0 +1,81 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 4: a small shipping parcel (the order the robot delivers).
+# The origin is the center of the bottom face, so a parcel resting on a
+# surface at height h has translation z = h (rack pick level: 0.40 m; robot
+# deck: 0.64 m, or 0.68 m with the deck lifted; dock conveyor belt: 0.64 m).
+# The box is purely visual (no bounding object): the engine animates it.
+# Fields `color` and `glowColor` are plain exposed fields (no regeneration),
+# e.g. set glowColor to 1 0.45 0 to highlight the active order.
+# template language: javascript
+
+PROTO ParcelBox [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "parcel"
+  field SFVec3f    size         0.45 0.4 0.3     # Box size (x, y, z) in meters.
+  field SFColor    color        1 1 1            # Tint multiplied with the cardboard texture.
+  field SFColor    glowColor    0 0 0            # Emissive highlight color.
+]
+{
+  %<
+    const s = fields.size.value;
+    const hx = s.x / 2, hy = s.y / 2, z1 = s.z;
+    const f = (v) => v.toFixed(4);
+    // Corners: 0..3 bottom (counterclockwise from above), 4..7 top.
+    const pts = [[-hx, -hy, 0], [hx, -hy, 0], [hx, hy, 0], [-hx, hy, 0],
+                 [-hx, -hy, z1], [hx, -hy, z1], [hx, hy, z1], [-hx, hy, z1]]
+      .map((p) => f(p[0]) + ' ' + f(p[1]) + ' ' + f(p[2])).join(', ');
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "parcel"
+    children [
+      Shape {
+        appearance PBRAppearance {
+          baseColor IS color
+          baseColorMap ImageTexture {
+            url [
+              "../textures/parcel_top.jpg"
+            ]
+          }
+          emissiveColor IS glowColor
+          roughness 0.8
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          coord DEF PARCEL_COORD Coordinate {
+            point [ %<= pts >% ]
+          }
+          texCoord TextureCoordinate {
+            point [ 0 0, 1 0, 1 1, 0 1 ]
+          }
+          coordIndex [ 4 5 6 7 -1 ]
+          texCoordIndex [ 0 1 2 3 -1 ]
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColor IS color
+          baseColorMap ImageTexture {
+            url [
+              "../textures/cardboard.jpg"
+            ]
+          }
+          emissiveColor IS glowColor
+          roughness 0.85
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          coord USE PARCEL_COORD
+          texCoord TextureCoordinate {
+            point [ 0 0, 1 0, 1 1, 0 1 ]
+          }
+          coordIndex [ 0 3 2 1 -1 0 1 5 4 -1 2 3 7 6 -1 3 0 4 7 -1 1 2 6 5 -1 ]
+          texCoordIndex [ 0 1 2 3 -1 0 1 2 3 -1 0 1 2 3 -1 0 1 2 3 -1 0 1 2 3 -1 ]
+        }
+      }
+    ]
+  }
+}
