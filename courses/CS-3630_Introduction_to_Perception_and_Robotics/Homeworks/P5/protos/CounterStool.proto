@@ -1,0 +1,220 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: a counter stool of the revolving-sushi restaurant.
+# The origin is on the floor under the seat center; the seat FACES local +x
+# (toward the conveyor counter), so the backrest and the MNIST seat-number
+# card face local -x (toward the walkway where the robot drives).
+#
+# Card: a black 6.6 cm frame with the 6 cm x 6 cm card image on its outer face,
+# centered at z = 0.125 m (the height of the robot camera). The card center is at
+# local x = -0.042 m and the card is 4 mm thick, so its face is at x = -0.044 m.
+# The stool is static (no Physics): the robot bumps into it but cannot move it.
+
+PROTO CounterStool [
+  field SFVec3f    translation    0 0 0
+  field SFRotation rotation       0 0 1 0
+  field SFString   name           "stool"
+  field MFString   cardImage      "../images/seat_cards/0.png"   # Seat-number artwork (MNIST digit).
+  field SFColor    cushionColor   0.62 0.1 0.08
+  field SFFloat    cardGlow       0.9                 # Self-illumination of the card (keeps it readable).
+]
+{
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "counter stool"
+    children [
+      DEF STOOL_METAL Shape {
+        appearance PBRAppearance {
+          baseColor 0.16 0.16 0.17
+          roughness 0.35
+          metalness 0.9
+        }
+        geometry Cylinder {
+          height 0.006
+          radius 0.026
+          subdivision 24
+        }
+      }
+      Pose {
+        translation 0 0 0.046
+        children [
+          Shape {
+            appearance DEF CHROME PBRAppearance {
+              baseColor 0.8 0.8 0.82
+              roughness 0.15
+              metalness 1
+            }
+            geometry Cylinder {
+              height 0.082
+              radius 0.0045
+              subdivision 12
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.04
+        children [
+          Shape {
+            appearance USE CHROME
+            geometry Cylinder {
+              height 0.002
+              radius 0.02
+              subdivision 20
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.087
+        children [
+          Shape {
+            appearance DEF DARK_WOOD PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wood_dark.jpg"
+                ]
+              }
+              roughness 0.55
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.006
+              radius 0.036
+              subdivision 28
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.0945
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS cushionColor
+              roughness 0.8
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.009
+              radius 0.038
+              subdivision 28
+            }
+          }
+        ]
+      }
+      # Backrest: two posts, a panel and a top rail.
+      Pose {
+        translation -0.036 0.027 0.132
+        children [
+          DEF BACK_POST Shape {
+            appearance USE DARK_WOOD
+            geometry Cylinder {
+              height 0.08
+              radius 0.0028
+              subdivision 10
+            }
+          }
+        ]
+      }
+      Pose {
+        translation -0.036 -0.027 0.132
+        children [
+          USE BACK_POST
+        ]
+      }
+      Pose {
+        translation -0.038 0 0.133
+        children [
+          Shape {
+            appearance USE DARK_WOOD
+            geometry Box {
+              size 0.004 0.072 0.078
+            }
+          }
+        ]
+      }
+      Pose {
+        translation -0.038 0 0.175
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS cushionColor
+              roughness 0.6
+              metalness 0
+            }
+            geometry Box {
+              size 0.008 0.08 0.008
+            }
+          }
+        ]
+      }
+      # Seat-number card: black frame + textured face (face normal = local -x).
+      Pose {
+        translation -0.042 0 0.125
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.02 0.02 0.02
+              roughness 0.9
+              metalness 0
+            }
+            geometry Box {
+              size 0.004 0.066 0.066
+            }
+          }
+          Shape {
+            castShadows FALSE
+            appearance PBRAppearance {
+              baseColorMap DEF CARD_ART ImageTexture {
+                url IS cardImage
+                repeatS FALSE
+                repeatT FALSE
+              }
+              emissiveColorMap USE CARD_ART
+              emissiveIntensity IS cardGlow
+              roughness 0.9
+              metalness 0
+            }
+            geometry IndexedFaceSet {
+              coord Coordinate {
+                point [
+                  -0.0021 0.03 -0.03, -0.0021 -0.03 -0.03, -0.0021 -0.03 0.03, -0.0021 0.03 0.03
+                ]
+              }
+              texCoord TextureCoordinate {
+                point [ 0 0, 1 0, 1 1, 0 1 ]
+              }
+              coordIndex [ 0 1 2 3 -1 ]
+              texCoordIndex [ 0 1 2 3 -1 ]
+            }
+          }
+        ]
+      }
+    ]
+    boundingObject Group {
+      children [
+        Pose {
+          translation 0 0 0.05
+          children [
+            Cylinder {
+              height 0.1
+              radius 0.038
+              subdivision 16
+            }
+          ]
+        }
+        Pose {
+          translation -0.04 0 0.133
+          children [
+            Box {
+              size 0.01 0.075 0.08
+            }
+          ]
+        }
+      ]
+    }
+    locked TRUE
+  }
+}

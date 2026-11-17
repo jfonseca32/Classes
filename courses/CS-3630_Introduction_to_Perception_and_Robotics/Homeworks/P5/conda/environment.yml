@@ -1,0 +1,22 @@
+name: cs3630_proj5
+channels:
+    - conda-forge
+    - pytorch
+dependencies:
+    - jupyter
+    - matplotlib
+    - numpy
+    - pytest
+    - python>=3.10
+    - pyyaml
+    - pytorch
+    - torchvision
+    - Pillow
+    - pandas
+    - opencv
+    - colour
+    - scipy
+    - shapely
+    - gtsam
+    # - gtsam-develop
+    # - torchsummaryX

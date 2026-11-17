@@ -1,0 +1,161 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: a small plate of sushi riding the conveyor belt.
+# The plate color is the price (see the menu board). `sushi` selects the piece:
+# "salmon", "tuna", "tamago", "ika", "ebi" (nigiri), "maki" or "ikura" (gunkan).
+# Purely visual: the `sushi_conveyor` supervisor moves it along the belt.
+# template language: javascript
+
+PROTO SushiPlate [
+  field SFVec3f    translation  0 0 0.11
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "sushi plate"
+  field SFColor    plateColor   0.92 0.92 0.92
+  field SFString   sushi        "salmon"
+]
+{
+  %<
+    const fish = {
+      salmon: '0.96 0.5 0.32', tuna: '0.75 0.1 0.18', tamago: '0.98 0.82 0.3',
+      ika: '0.96 0.96 0.92', ebi: '0.97 0.55 0.42',
+    };
+    const kind = fields.sushi.value.toLowerCase();
+  >%
+  Pose {
+    translation IS translation
+    rotation IS rotation
+    children [
+      Pose {
+        translation 0 0 0.0012
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS plateColor
+              roughness 0.2
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.0024
+              radius 0.0145
+              subdivision 20
+            }
+          }
+        ]
+      }
+      %< for (const dy of [-0.0055, 0.0055]) { >%
+      %< if (kind === 'maki') { >%
+      Pose {
+        translation 0 %<= dy.toFixed(4) >% 0.0065
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.05 0.08 0.05
+              roughness 0.7
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.008
+              radius 0.0048
+              subdivision 14
+            }
+          }
+          Pose {
+            translation 0 0 0.0041
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.97 0.97 0.94
+                  roughness 0.9
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.0004
+                  radius 0.0042
+                  subdivision 14
+                }
+              }
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.95 0.45 0.3
+                  roughness 0.5
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.0006
+                  radius 0.0016
+                  subdivision 10
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } else if (kind === 'ikura') { >%
+      Pose {
+        translation 0 %<= dy.toFixed(4) >% 0.0062
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.05 0.08 0.05
+              roughness 0.7
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.0075
+              radius 0.005
+              subdivision 14
+            }
+          }
+          Pose {
+            translation 0 0 0.004
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.95 0.35 0.08
+                  roughness 0.1
+                  metalness 0
+                }
+                geometry Sphere {
+                  radius 0.0042
+                  subdivision 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } else { >%
+      Pose {
+        translation 0 %<= dy.toFixed(4) >% 0.0046
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.98 0.98 0.95
+              roughness 0.9
+              metalness 0
+            }
+            geometry Box {
+              size 0.016 0.007 0.0046
+            }
+          }
+          Pose {
+            translation 0 0 0.003
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor %<= fish[kind] || fish.salmon >%
+                  roughness 0.35
+                  metalness 0
+                }
+                geometry Box {
+                  size 0.0185 0.0078 0.0016
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } >%
+      %< } >%
+    ]
+  }
+}

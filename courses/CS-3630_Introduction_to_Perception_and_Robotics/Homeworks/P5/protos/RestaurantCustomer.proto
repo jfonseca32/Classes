@@ -1,0 +1,92 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: a customer for the dynamic simulation (about 1:6 scale).
+# The origin is on the floor under the figure and the figure faces local +x.
+# It has no Physics: the restaurant_crowd supervisor moves it by setting its
+# translation and rotation. Its bounding cylinder is what the e-puck's infra-red
+# proximity sensors see, and what the robot bumps into.
+# template language: javascript
+
+PROTO RestaurantCustomer [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "customer"
+  field SFColor    shirtColor   0.85 0.85 0.8
+  field SFColor    pantsColor   0.2 0.22 0.3
+  field SFColor    skinColor    0.93 0.78 0.64
+  field SFFloat    radius       0.03
+  field SFFloat    height       0.27
+]
+{
+  %<
+    const r = fields.radius.value, h = fields.height.value;
+    const legH = 0.42 * h, bodyH = 0.4 * h, headR = 0.09 * h;
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "restaurant customer"
+    children [
+      Pose {
+        translation 0 0 %<= legH / 2 >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS pantsColor
+              roughness 0.8
+              metalness 0
+            }
+            geometry Cylinder {
+              height %<= legH >%
+              radius %<= 0.7 * r >%
+              subdivision 16
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 %<= legH + bodyH / 2 >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS shirtColor
+              roughness 0.7
+              metalness 0
+            }
+            geometry Capsule {
+              height %<= bodyH - 2 * 0.8 * r >%
+              radius %<= r >%
+              subdivision 16
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 %<= legH + bodyH + headR >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS skinColor
+              roughness 0.6
+              metalness 0
+            }
+            geometry Sphere {
+              radius %<= headR >%
+              subdivision 2
+            }
+          }
+        ]
+      }
+    ]
+    boundingObject Pose {
+      translation 0 0 %<= (legH + bodyH) / 2 >%
+      children [
+        Cylinder {
+          height %<= legH + bodyH >%
+          radius IS radius
+          subdivision 16
+        }
+      ]
+    }
+  }
+}

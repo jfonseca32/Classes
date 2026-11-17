@@ -1,0 +1,519 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: "SUSHI-BOT", an e-puck with a two-tier serving shelf.
+#
+# The base is the standard Webots e-puck (same wheels, motors, GPS and compass in
+# the turret slot), with a 32x32 "seat_camera" mounted at z = 0.125 m, so the
+# differential-drive code and the camera geometry are those of a stock e-puck. On top sits a serving shelf: a rear spine that
+# holds the camera "eye" and two lacquered trays loaded with drinks.
+#
+# The shelf is purely visual (Shapes only, no mass, no collision), and it is built
+# around the camera's 22.6 degree field of view so that nothing on the trays ever
+# shows up in the camera image.
+# template language: javascript
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+
+PROTO WaiterEpuck [
+  field SFVec3f    translation     0 0 0
+  field SFRotation rotation        0 0 1 0
+  field SFString   name            "sushi-bot"
+  field SFString   controller      "rrt_controller"
+  field MFString   controllerArgs  []
+  field SFString   window          "<none>"
+  field SFString   customData      ""                   # Written by rrt_controller, read by the restaurant_crowd supervisor.
+  field SFBool     supervisor      TRUE
+  field SFBool     synchronization TRUE
+  field SFString   cameraName      "seat_camera"
+  field SFBool     drinks          TRUE                 # Load the trays with drinks.
+  field SFColor    shellColor      0.94 0.93 0.9
+  field SFColor    accentColor     0.75 0.1 0.08
+]
+{
+  %<
+    const f = (v) => (Math.abs(v) < 5e-6 ? '0' : v.toFixed(4));
+    // A thin cylindrical wall (tray rim, glass) as an IndexedFaceSet ring.
+    function ringWall(r, z0, z1, n) {
+      let pts = [], idx = [];
+      for (let k = 0; k < n; ++k) {
+        const a = 2 * Math.PI * k / n;
+        pts.push(f(r * Math.cos(a)) + ' ' + f(r * Math.sin(a)) + ' ' + f(z0));
+        pts.push(f(r * Math.cos(a)) + ' ' + f(r * Math.sin(a)) + ' ' + f(z1));
+      }
+      for (let k = 0; k < n; ++k) {
+        const a = 2 * k, b = 2 * ((k + 1) % n);
+        idx.push(a + ' ' + b + ' ' + (b + 1) + ' ' + (a + 1) + ' -1');
+        idx.push((a + 1) + ' ' + (b + 1) + ' ' + b + ' ' + a + ' -1');   // double sided
+      }
+      return 'coord Coordinate { point [ ' + pts.join(', ') + ' ] } coordIndex [ ' + idx.join(' ') + ' ]';
+    }
+  >%
+  E-puck {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    controller IS controller
+    controllerArgs IS controllerArgs
+    window IS window
+    customData IS customData
+    supervisor IS supervisor
+    synchronization IS synchronization
+    turretSlot [
+      Compass {
+      }
+      GPS {
+      }
+      # Everything below is authored in the robot frame (+x forward, z up from the floor).
+      Pose {
+        translation 0.0095 0 -0.0486
+        children [
+          # Shelf base collar on top of the e-puck turret.
+          Pose {
+            translation 0 0 0.0525
+            children [
+              Shape {
+                appearance DEF SHELL PBRAppearance {
+                  baseColor IS shellColor
+                  roughness 0.35
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.007
+                  radius 0.035
+                  subdivision 32
+                }
+              }
+            ]
+          }
+          Pose {
+            translation 0 0 0.0565
+            children [
+              Shape {
+                appearance DEF ACCENT PBRAppearance {
+                  baseColor IS accentColor
+                  roughness 0.4
+                  metalness 0
+                  emissiveColor IS accentColor
+                  emissiveIntensity 0.4
+                }
+                geometry Cylinder {
+                  height 0.0015
+                  radius 0.0352
+                  subdivision 32
+                }
+              }
+            ]
+          }
+          # Rear spine (holds the trays and the camera eye).
+          Pose {
+            translation -0.029 0 0.13
+            children [
+              Shape {
+                appearance USE SHELL
+                geometry Box {
+                  size 0.008 0.05 0.15
+                }
+              }
+            ]
+          }
+          # Name plate on the back of the spine (faces -x).
+          Pose {
+            translation -0.0332 0 0.072
+            children [
+              Shape {
+                castShadows FALSE
+                appearance PBRAppearance {
+                  baseColorMap DEF PLATE_ART ImageTexture {
+                    url [
+                      "../textures/robot_plate.jpg"
+                    ]
+                  }
+                  emissiveColorMap USE PLATE_ART
+                  emissiveIntensity 0.5
+                  roughness 0.5
+                  metalness 0
+                }
+                geometry IndexedFaceSet {
+                  coord Coordinate {
+                    point [ 0 0.02 -0.005, 0 -0.02 -0.005, 0 -0.02 0.005, 0 0.02 0.005 ]
+                  }
+                  texCoord TextureCoordinate {
+                    point [ 0 0, 1 0, 1 1, 0 1 ]
+                  }
+                  coordIndex [ 0 1 2 3 -1 ]
+                  texCoordIndex [ 0 1 2 3 -1 ]
+                }
+              }
+            ]
+          }
+          # Camera eye: housing behind the lens (the Camera device itself is in the
+          # ground-sensor slot at x = -0.005, z = 0.125, looking along +x).
+          Pose {
+            translation -0.0165 0 0.1253
+            rotation 0 1 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.06 0.06 0.07
+                  roughness 0.3
+                  metalness 0.5
+                }
+                geometry Cylinder {
+                  height 0.017
+                  radius 0.0085
+                  subdivision 20
+                }
+              }
+            ]
+          }
+          Pose {
+            translation -0.0078 0 0.1253
+            rotation 0 1 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.1 0.35 0.9
+                  roughness 0.05
+                  metalness 0.2
+                  emissiveColor 0.1 0.45 1
+                  emissiveIntensity 0.6
+                }
+                geometry Cylinder {
+                  height 0.0008
+                  radius 0.0055
+                  subdivision 20
+                }
+              }
+            ]
+          }
+          # Two chrome posts at the front corners (outside the camera frustum).
+          Pose {
+            translation 0.022 0.025 0.111
+            children [
+              DEF POST Shape {
+                appearance DEF CHROME PBRAppearance {
+                  baseColor 0.82 0.82 0.85
+                  roughness 0.15
+                  metalness 1
+                }
+                geometry Cylinder {
+                  height 0.11
+                  radius 0.0018
+                  subdivision 10
+                }
+              }
+            ]
+          }
+          Pose {
+            translation 0.022 -0.025 0.111
+            children [
+              USE POST
+            ]
+          }
+          # Tier 1 tray (top at z = 0.087) and tier 2 tray (top at z = 0.168).
+          %< for (const z of [0.0855, 0.1665]) { >%
+          Pose {
+            translation 0 0 %<= f(z) >%
+            children [
+              Shape {
+                appearance DEF LACQUER PBRAppearance {
+                  baseColor 0.05 0.04 0.04
+                  roughness 0.15
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.003
+                  radius 0.034
+                  subdivision 32
+                }
+              }
+              Shape {
+                appearance USE ACCENT
+                geometry IndexedFaceSet {
+                  %<= ringWall(0.034, 0.0, 0.005, 32) >%
+                }
+              }
+            ]
+          }
+          %< } >%
+          %< if (fields.drinks.value) { >%
+          # ---- tier 1 drinks: green tea, beer, ramune (kept to the sides) ----
+          Pose {
+            translation -0.012 0.019 0.087
+            children [
+              DEF TEA_CUP Group {
+                children [
+                  Pose {
+                    translation 0 0 0.008
+                    children [
+                      Shape {
+                        appearance PBRAppearance {
+                          baseColor 0.55 0.42 0.3
+                          roughness 0.7
+                          metalness 0
+                        }
+                        geometry Cylinder {
+                          height 0.016
+                          radius 0.0075
+                          subdivision 16
+                        }
+                      }
+                    ]
+                  }
+                  Pose {
+                    translation 0 0 0.0162
+                    children [
+                      Shape {
+                        appearance PBRAppearance {
+                          baseColor 0.38 0.55 0.12
+                          roughness 0.2
+                          metalness 0
+                        }
+                        geometry Cylinder {
+                          height 0.0005
+                          radius 0.0068
+                          subdivision 16
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+          Pose {
+            translation -0.012 -0.019 0.087
+            children [
+              DEF BEER Group {
+                children [
+                  Pose {
+                    translation 0 0 0.012
+                    children [
+                      Shape {
+                        appearance PBRAppearance {
+                          baseColor 0.95 0.6 0.08
+                          roughness 0.1
+                          metalness 0
+                          transparency 0.15
+                        }
+                        geometry Cylinder {
+                          height 0.024
+                          radius 0.0072
+                          subdivision 16
+                        }
+                      }
+                    ]
+                  }
+                  Pose {
+                    translation 0 0 0.0265
+                    children [
+                      Shape {
+                        appearance PBRAppearance {
+                          baseColor 0.98 0.97 0.92
+                          roughness 0.9
+                          metalness 0
+                        }
+                        geometry Cylinder {
+                          height 0.005
+                          radius 0.0074
+                          subdivision 16
+                        }
+                      }
+                    ]
+                  }
+                  Pose {
+                    translation 0 -0.0095 0.013
+                    children [
+                      Shape {
+                        appearance PBRAppearance {
+                          baseColor 0.9 0.92 0.95
+                          roughness 0.1
+                          metalness 0
+                          transparency 0.5
+                        }
+                        geometry Box {
+                          size 0.003 0.004 0.014
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+          Pose {
+            translation 0.014 0.02 0.087
+            children [
+              DEF RAMUNE Group {
+                children [
+                  Pose {
+                    translation 0 0 0.011
+                    children [
+                      Shape {
+                        appearance PBRAppearance {
+                          baseColor 0.45 0.8 0.95
+                          roughness 0.05
+                          metalness 0
+                          transparency 0.35
+                        }
+                        geometry Cylinder {
+                          height 0.022
+                          radius 0.0055
+                          subdivision 16
+                        }
+                      }
+                    ]
+                  }
+                  Pose {
+                    translation 0 0 0.0245
+                    children [
+                      Shape {
+                        appearance PBRAppearance {
+                          baseColor 0.1 0.35 0.85
+                          roughness 0.3
+                          metalness 0
+                        }
+                        geometry Cylinder {
+                          height 0.005
+                          radius 0.003
+                          subdivision 12
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+          Pose {
+            translation 0.014 -0.02 0.087
+            children [
+              USE TEA_CUP
+            ]
+          }
+          # ---- tier 2 drinks: sake set, two teas, a tall Calpis soda ----
+          Pose {
+            translation -0.008 0.0 0.168
+            children [
+              Pose {
+                translation 0 0 0.016
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      baseColor 0.92 0.9 0.84
+                      roughness 0.3
+                      metalness 0
+                    }
+                    geometry Cylinder {
+                      height 0.032
+                      radius 0.0065
+                      subdivision 16
+                    }
+                  }
+                ]
+              }
+              Pose {
+                translation 0 0 0.0365
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      baseColor 0.15 0.2 0.45
+                      roughness 0.3
+                      metalness 0
+                    }
+                    geometry Cylinder {
+                      height 0.009
+                      radius 0.0032
+                      subdivision 12
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+          Pose {
+            translation 0.012 0.016 0.168
+            children [
+              USE TEA_CUP
+            ]
+          }
+          Pose {
+            translation 0.012 -0.016 0.168
+            children [
+              USE BEER
+            ]
+          }
+          Pose {
+            translation -0.01 0.022 0.168
+            children [
+              USE RAMUNE
+            ]
+          }
+          Pose {
+            translation -0.01 -0.022 0.168
+            children [
+              Pose {
+                translation 0 0 0.016
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      baseColor 0.97 0.97 0.95
+                      roughness 0.1
+                      metalness 0
+                      transparency 0.25
+                    }
+                    geometry Cylinder {
+                      height 0.032
+                      radius 0.0058
+                      subdivision 16
+                    }
+                  }
+                ]
+              }
+              Pose {
+                translation 0.002 0 0.036
+                rotation 0 1 0 0.25
+                children [
+                  Shape {
+                    appearance USE ACCENT
+                    geometry Cylinder {
+                      height 0.016
+                      radius 0.0009
+                      subdivision 8
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+          %< } >%
+          # Handle on top of the spine.
+          Pose {
+            translation -0.029 0 0.209
+            children [
+              Shape {
+                appearance USE ACCENT
+                geometry Box {
+                  size 0.01 0.054 0.006
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+    groundSensorsSlot [
+      Pose {
+        translation -0.035 0 0.125
+        children [
+          Camera {
+            name IS cameraName
+            fieldOfView 0.3948
+            width 32
+            height 32
+            far 1
+          }
+        ]
+      }
+    ]
+  }
+}
