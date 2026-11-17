@@ -1,0 +1,149 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: a stylized sushi chef (decoration, stands in the chef well).
+# Miniature scale: about 0.29 m tall. Faces local +x.
+
+PROTO SushiChef [
+  field SFVec3f    translation    0 0 0
+  field SFRotation rotation       0 0 1 0
+  field SFString   name           "chef"
+  field SFColor    headbandColor  0.75 0.08 0.06
+  field SFColor    apronColor     0.12 0.16 0.3
+]
+{
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "sushi chef"
+    children [
+      # legs
+      Pose {
+        translation 0 0.011 0.055
+        children [
+          DEF LEG Shape {
+            appearance DEF PANTS PBRAppearance {
+              baseColor 0.1 0.1 0.12
+              roughness 0.8
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.11
+              radius 0.0085
+              subdivision 12
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 -0.011 0.055
+        children [
+          USE LEG
+        ]
+      }
+      # white coat (body)
+      Pose {
+        translation 0 0 0.16
+        children [
+          Shape {
+            appearance DEF COAT PBRAppearance {
+              baseColor 0.96 0.96 0.95
+              roughness 0.7
+              metalness 0
+            }
+            geometry Capsule {
+              height 0.09
+              radius 0.024
+              subdivision 16
+            }
+          }
+        ]
+      }
+      # apron
+      Pose {
+        translation 0.0215 0 0.135
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS apronColor
+              roughness 0.8
+              metalness 0
+            }
+            geometry Box {
+              size 0.006 0.036 0.07
+            }
+          }
+        ]
+      }
+      # arms reaching toward the prep counter
+      Pose {
+        translation 0.018 0.027 0.175
+        rotation 0 1 0 0.9
+        children [
+          DEF ARM Shape {
+            appearance USE COAT
+            geometry Capsule {
+              height 0.04
+              radius 0.0065
+              subdivision 10
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0.018 -0.027 0.175
+        rotation 0 1 0 0.9
+        children [
+          USE ARM
+        ]
+      }
+      # head, headband and hat
+      Pose {
+        translation 0 0 0.232
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.93 0.76 0.6
+              roughness 0.7
+              metalness 0
+            }
+            geometry Sphere {
+              radius 0.019
+              subdivision 2
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.24
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor IS headbandColor
+              roughness 0.7
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.006
+              radius 0.0195
+              subdivision 16
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.256
+        children [
+          Shape {
+            appearance USE COAT
+            geometry Cylinder {
+              height 0.024
+              radius 0.017
+              subdivision 16
+            }
+          }
+        ]
+      }
+    ]
+    locked TRUE
+  }
+}

@@ -1,0 +1,473 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: the revolving-sushi counter island.
+# A stadium-shaped island (two half discs of radius `radius` centered at
+# x = +/- `halfStraight`, joined by straight sides). From the outside in:
+# lacquered skirt, a wooden customer ledge, the conveyor belt between two chrome
+# rails, a narrow inner ledge, and the sunken chef well with a steel prep counter.
+# Plates riding the belt are separate SushiPlate nodes moved by the
+# `sushi_conveyor` supervisor controller (they are not part of this PROTO).
+# `placeSettings` puts a tea cup, a soy dish and chopsticks on the customer ledge:
+# one (x, side) pair per seat, side = +1 (north row) or -1 (south row).
+# template language: javascript
+
+PROTO SushiConveyorCounter [
+  field SFVec3f    translation    0 0 0
+  field SFRotation rotation       0 0 1 0
+  field SFString   name           "conveyor counter"
+  field SFFloat    halfStraight   0.78
+  field SFFloat    radius         0.22
+  field SFFloat    height         0.11
+  field SFFloat    beltInner      0.152
+  field SFFloat    beltOuter      0.188
+  field SFFloat    wellRadius     0.12
+  field MFVec2f    placeSettings  []
+  field SFColor    lacquerColor   0.55 0.07 0.06
+]
+{
+  %<
+    const L = fields.halfStraight.value, R = fields.radius.value, H = fields.height.value;
+    const B0 = fields.beltInner.value, B1 = fields.beltOuter.value, W = fields.wellRadius.value;
+    const f = (v) => (Math.abs(v) < 5e-6 ? '0' : v.toFixed(4));
+    const NA = 18;  // segments per half disc
+    // Perimeter of the stadium offset at radius r, counterclockwise seen from above,
+    // starting at (L, -r). Returns [[x, y, s]] where s = arc length (closed: last == first).
+    function loop(r) {
+      const pts = [];
+      let s = 0, prev = null;
+      const push = (x, y) => {
+        if (prev) s += Math.hypot(x - prev[0], y - prev[1]);
+        pts.push([x, y, s]); prev = [x, y];
+      };
+      for (let k = 0; k <= NA; ++k) {
+        const a = -Math.PI / 2 + Math.PI * k / NA;
+        push(L + r * Math.cos(a), r * Math.sin(a));
+      }
+      for (let k = 0; k <= NA; ++k) {
+        const a = Math.PI / 2 + Math.PI * k / NA;
+        push(-L + r * Math.cos(a), r * Math.sin(a));
+      }
+      push(L, -r);
+      return pts;
+    }
+    // Horizontal ring between radii r0 < r1 at height z; uMode 'planar' or 'belt'.
+    function ring(r0, r1, z, uMode, tile) {
+      const a = loop(r0), b = loop(r1);
+      let pts = [], tc = [], idx = [];
+      for (let k = 0; k < a.length; ++k) {
+        pts.push(f(a[k][0]) + ' ' + f(a[k][1]) + ' ' + f(z));
+        pts.push(f(b[k][0]) + ' ' + f(b[k][1]) + ' ' + f(z));
+        if (uMode === 'belt') {
+          tc.push(f(a[k][2] / tile) + ' 0');
+          tc.push(f(a[k][2] / tile) + ' 1');
+        } else {
+          tc.push(f(a[k][0] / tile) + ' ' + f(a[k][1] / tile));
+          tc.push(f(b[k][0] / tile) + ' ' + f(b[k][1] / tile));
+        }
+      }
+      for (let k = 0; k + 1 < a.length; ++k) {
+        const i = 2 * k, j = 2 * (k + 1);
+        idx.push(i + ' ' + (i + 1) + ' ' + (j + 1) + ' ' + j + ' -1');
+      }
+      return 'coord Coordinate { point [ ' + pts.join(', ') + ' ] } texCoord TextureCoordinate { point [ ' + tc.join(', ') +
+             ' ] } coordIndex [ ' + idx.join(' ') + ' ] texCoordIndex [ ' + idx.join(' ') + ' ]';
+    }
+    // Vertical wall at radius r from z0 to z1, facing outward (out = true) or inward.
+    function wall(r, z0, z1, out, tile) {
+      const a = loop(r);
+      let pts = [], tc = [], idx = [];
+      for (let k = 0; k < a.length; ++k) {
+        pts.push(f(a[k][0]) + ' ' + f(a[k][1]) + ' ' + f(z0));
+        pts.push(f(a[k][0]) + ' ' + f(a[k][1]) + ' ' + f(z1));
+        tc.push(f(a[k][2] / tile) + ' 0');
+        tc.push(f(a[k][2] / tile) + ' ' + f((z1 - z0) / tile));
+      }
+      for (let k = 0; k + 1 < a.length; ++k) {
+        const i = 2 * k, j = 2 * (k + 1);
+        if (out)
+          idx.push(i + ' ' + j + ' ' + (j + 1) + ' ' + (i + 1) + ' -1');
+        else
+          idx.push(i + ' ' + (i + 1) + ' ' + (j + 1) + ' ' + j + ' -1');
+      }
+      return 'coord Coordinate { point [ ' + pts.join(', ') + ' ] } texCoord TextureCoordinate { point [ ' + tc.join(', ') +
+             ' ] } coordIndex [ ' + idx.join(' ') + ' ] texCoordIndex [ ' + idx.join(' ') + ' ]';
+    }
+    // Filled stadium (top face) of radius r at height z.
+    function disc(r, z) {
+      const a = loop(r);
+      let pts = [f(0) + ' 0 ' + f(z)], idx = [];
+      for (let k = 0; k < a.length; ++k)
+        pts.push(f(a[k][0]) + ' ' + f(a[k][1]) + ' ' + f(z));
+      for (let k = 1; k + 1 < pts.length; ++k)
+        idx.push('0 ' + k + ' ' + (k + 1) + ' -1');
+      return 'coord Coordinate { point [ ' + pts.join(', ') + ' ] } coordIndex [ ' + idx.join(' ') + ' ]';
+    }
+    const settings = fields.placeSettings.value;
+    const ledgeR = (B1 + R) / 2 + 0.006;
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "conveyor counter"
+    children [
+      # --- lacquered skirt and dark kick plate ---
+      Shape {
+        appearance PBRAppearance {
+          baseColor IS lacquerColor
+          roughness 0.25
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= wall(R, 0.014, H - 0.008, true, 0.3) >%
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColor 0.08 0.07 0.07
+          roughness 0.6
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= wall(R - 0.006, 0, 0.0145, true, 0.3) >%
+        }
+      }
+      # --- gold pin stripe under the ledge ---
+      Shape {
+        appearance PBRAppearance {
+          baseColor 0.85 0.62 0.2
+          roughness 0.3
+          metalness 0.8
+        }
+        geometry IndexedFaceSet {
+          %<= wall(R + 0.0005, H - 0.022, H - 0.018, true, 0.3) >%
+        }
+      }
+      # --- wooden customer ledge (with a small overhang) ---
+      DEF LEDGE_APPEARANCE Shape {
+        appearance DEF LIGHT_WOOD PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/wood_light.jpg"
+            ]
+          }
+          roughness 0.45
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= ring(B1 + 0.003, R + 0.008, H, 'planar', 0.4) >%
+        }
+      }
+      Shape {
+        appearance USE LIGHT_WOOD
+        geometry IndexedFaceSet {
+          %<= wall(R + 0.008, H - 0.009, H, true, 0.3) >%
+        }
+      }
+      # --- conveyor belt between two chrome rails ---
+      Shape {
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/belt.jpg"
+            ]
+          }
+          roughness 0.5
+          metalness 0.3
+        }
+        geometry IndexedFaceSet {
+          %<= ring(B0, B1, H - 0.004, 'belt', 0.16) >%
+        }
+      }
+      %< for (const r of [B0, B1]) { >%
+      Shape {
+        appearance DEF CHROME PBRAppearance {
+          baseColor 0.8 0.8 0.83
+          roughness 0.15
+          metalness 1
+        }
+        geometry IndexedFaceSet {
+          %<= ring(r - 0.003, r + 0.003, H + 0.004, 'planar', 1) >%
+        }
+      }
+      Shape {
+        appearance USE CHROME
+        geometry IndexedFaceSet {
+          %<= wall(r + 0.003, H - 0.004, H + 0.004, true, 1) >%
+        }
+      }
+      Shape {
+        appearance USE CHROME
+        geometry IndexedFaceSet {
+          %<= wall(r - 0.003, H - 0.004, H + 0.004, false, 1) >%
+        }
+      }
+      %< } >%
+      # --- inner (chef side) ledge, inner wall and the chef well floor ---
+      Shape {
+        appearance USE LIGHT_WOOD
+        geometry IndexedFaceSet {
+          %<= ring(W, B0 - 0.003, H, 'planar', 0.4) >%
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/wood_dark.jpg"
+            ]
+          }
+          roughness 0.6
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= wall(W, 0, H, false, 0.3) >%
+        }
+      }
+      Shape {
+        appearance PBRAppearance {
+          baseColor 0.2 0.22 0.22
+          roughness 0.9
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= disc(W, 0.0015) >%
+        }
+      }
+      # --- steel prep counter in the middle of the chef well ---
+      Shape {
+        appearance DEF STEEL PBRAppearance {
+          baseColor 0.7 0.72 0.74
+          roughness 0.35
+          metalness 0.9
+        }
+        geometry IndexedFaceSet {
+          %<= disc(0.042, 0.075) >%
+        }
+      }
+      Shape {
+        appearance USE STEEL
+        geometry IndexedFaceSet {
+          %<= wall(0.042, 0, 0.075, true, 0.3) >%
+        }
+      }
+      # Cutting boards, rice tubs and fish blocks on the prep counter.
+      %< for (const x of [-0.55, -0.15, 0.25, 0.6]) { >%
+      Pose {
+        translation %<= f(x) >% 0 0.0775
+        children [
+          Shape {
+            appearance USE LIGHT_WOOD
+            geometry Box {
+              size 0.07 0.05 0.005
+            }
+          }
+        ]
+      }
+      Pose {
+        translation %<= f(x + 0.015) >% 0.008 0.083
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor %<= x < 0 ? '0.95 0.5 0.35' : '0.75 0.12 0.18' >%
+              roughness 0.4
+              metalness 0
+            }
+            geometry Box {
+              size 0.03 0.012 0.007
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< for (const x of [-0.35, 0.05, 0.45]) { >%
+      Pose {
+        translation %<= f(x) >% 0 0.088
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.55 0.36 0.18
+              roughness 0.6
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.022
+              radius 0.019
+              subdivision 20
+            }
+          }
+          Pose {
+            translation 0 0 0.0115
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.97 0.97 0.94
+                  roughness 0.9
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.002
+                  radius 0.017
+                  subdivision 20
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } >%
+      # --- lantern beam over the counter, carried by two posts in the chef well ---
+      %< for (const x of [-0.62, 0.62]) { >%
+      Pose {
+        translation %<= f(x) >% 0 0.28
+        children [
+          DEF BEAM_POST Shape {
+            appearance DEF DARK_WOOD PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wood_dark.jpg"
+                ]
+              }
+              roughness 0.6
+              metalness 0
+            }
+            geometry Box {
+              size 0.018 0.018 0.41
+            }
+          }
+        ]
+      }
+      %< } >%
+      Pose {
+        translation 0 0 0.494
+        children [
+          Shape {
+            appearance USE DARK_WOOD
+            geometry Box {
+              size 1.86 0.024 0.024
+            }
+          }
+        ]
+      }
+      %< for (const x of [-0.84, 0.84]) { >%
+      Pose {
+        translation %<= f(x) >% 0 0.494
+        children [
+          Shape {
+            appearance USE DARK_WOOD
+            geometry Box {
+              size 0.024 0.3 0.02
+            }
+          }
+        ]
+      }
+      %< } >%
+      # --- place settings on the customer ledge ---
+      %< for (const s of settings) { const side = s.y >= 0 ? 1 : -1; const y = side * ledgeR; >%
+      Pose {
+        translation %<= f(s.x) >% %<= f(y) >% %<= f(H) >%
+        children [
+          Pose {
+            translation -0.013 0 0.006
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.42 0.5 0.32
+                  roughness 0.6
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.012
+                  radius 0.0055
+                  subdivision 14
+                }
+              }
+            ]
+          }
+          Pose {
+            translation 0.012 0 0.0012
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.95 0.95 0.93
+                  roughness 0.3
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.0024
+                  radius 0.007
+                  subdivision 14
+                }
+              }
+              Pose {
+                translation 0 0 0.0013
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      baseColor 0.2 0.08 0.03
+                      roughness 0.1
+                      metalness 0
+                    }
+                    geometry Cylinder {
+                      height 0.0003
+                      radius 0.0052
+                      subdivision 14
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+          Pose {
+            translation 0 %<= f(-side * 0.011) >% 0.0012
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.85 0.72 0.5
+                  roughness 0.6
+                  metalness 0
+                }
+                geometry Box {
+                  size 0.036 0.004 0.0024
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } >%
+    ]
+    boundingObject Group {
+      children [
+        Pose {
+          translation 0 0 %<= f(H / 2) >%
+          children [
+            Box {
+              size %<= f(2 * L) >% %<= f(2 * R) >% %<= f(H) >%
+            }
+          ]
+        }
+        Pose {
+          translation %<= f(L) >% 0 %<= f(H / 2) >%
+          children [
+            Cylinder {
+              height %<= f(H) >%
+              radius %<= f(R) >%
+              subdivision 24
+            }
+          ]
+        }
+        Pose {
+          translation %<= f(-L) >% 0 %<= f(H / 2) >%
+          children [
+            Cylinder {
+              height %<= f(H) >%
+              radius %<= f(R) >%
+              subdivision 24
+            }
+          ]
+        }
+      ]
+    }
+    locked TRUE
+  }
+}

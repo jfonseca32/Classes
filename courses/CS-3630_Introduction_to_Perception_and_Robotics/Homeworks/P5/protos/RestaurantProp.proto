@@ -1,0 +1,624 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: static props of the restaurant that the robot must avoid.
+# `type`: "pillar", "plant", "host_stand", "umbrella_stand", "bussing_cart",
+# "crate_stack", "wet_floor_sign", "tray_rack" or "drink_station".
+# `size` = (length along local x, width along local y, height); for round props
+# (plant, umbrella_stand) only size.x is used, as the radius. The collision
+# shape matches the footprint used by the planner (tools/restaurant_layout.py).
+# template language: javascript
+
+PROTO RestaurantProp [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "prop"
+  field SFString   type         "pillar"
+  field SFVec3f    size         0.08 0.08 0.36
+]
+{
+  %<
+    const t = fields.type.value;
+    const L = fields.size.value.x, Wd = fields.size.value.y, H = fields.size.value.z;
+    const f = (v) => (Math.abs(v) < 5e-6 ? '0' : v.toFixed(4));
+    const round = (t === 'plant' || t === 'umbrella_stand');
+    let rng = 7;
+    const rand = () => { rng = (rng * 16807) % 2147483647; return rng / 2147483647; };
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model %<= '"' + t + '"' >%
+    children [
+      %< if (t === 'pillar') { >%
+      Pose {
+        translation 0 0 %<= f(H / 2) >%
+        children [
+          Shape {
+            appearance DEF DARK_WOOD PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wood_dark.jpg"
+                ]
+              }
+              roughness 0.55
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(L) >% %<= f(Wd) >% %<= f(H) >%
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.008
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.12 0.1 0.09
+              roughness 0.5
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(L + 0.01) >% %<= f(Wd + 0.01) >% 0.016
+            }
+          }
+        ]
+      }
+      %< for (const [nx, ny] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { >%
+      Pose {
+        translation %<= f(nx * (L / 2 + 0.001)) >% %<= f(ny * (Wd / 2 + 0.001)) >% 0.24
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.97 0.94 0.86
+              roughness 0.9
+              metalness 0
+              emissiveColor 0.97 0.94 0.86
+              emissiveIntensity 0.15
+            }
+            geometry Box {
+              size %<= f(nx === 0 ? 0.03 : 0.002) >% %<= f(nx === 0 ? 0.002 : 0.03) >% 0.08
+            }
+          }
+          Pose {
+            translation %<= f(nx * 0.0012) >% %<= f(ny * 0.0012) >% 0.012
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.75 0.08 0.06
+                  roughness 0.6
+                  metalness 0
+                }
+                geometry Box {
+                  size %<= f(nx === 0 ? 0.012 : 0.001) >% %<= f(nx === 0 ? 0.001 : 0.012) >% 0.012
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } >%
+      %< } else if (t === 'plant') { >%
+      Pose {
+        translation 0 0 0.03
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.12 0.16 0.2
+              roughness 0.2
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.06
+              radius %<= f(L * 0.8) >%
+              subdivision 24
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0 0 0.0605
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.25 0.18 0.12
+              roughness 1
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.001
+              radius %<= f(L * 0.75) >%
+              subdivision 24
+            }
+          }
+        ]
+      }
+      %< for (let k = 0; k < 6; ++k) {
+           const a = 2 * Math.PI * k / 6 + rand(), r = 0.012 + 0.018 * rand();
+           const h = 0.18 + 0.14 * rand();
+           const x = r * Math.cos(a), y = r * Math.sin(a); >%
+      Pose {
+        translation %<= f(x) >% %<= f(y) >% %<= f(0.06 + h / 2) >%
+        rotation %<= f(-Math.sin(a)) >% %<= f(Math.cos(a)) >% 0 %<= f(0.08 + 0.08 * rand()) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.42 0.58 0.22
+              roughness 0.5
+              metalness 0
+            }
+            geometry Cylinder {
+              height %<= f(h) >%
+              radius 0.0032
+              subdivision 8
+            }
+          }
+          %< for (let n = 1; n < 4; ++n) { >%
+          Pose {
+            translation 0 0 %<= f(-h / 2 + n * h / 4) >%
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.32 0.45 0.16
+                  roughness 0.5
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.003
+                  radius 0.0038
+                  subdivision 8
+                }
+              }
+            ]
+          }
+          %< } >%
+          %< for (let n = 0; n < 4; ++n) { const b = 2 * Math.PI * rand(); >%
+          Pose {
+            translation %<= f(0.014 * Math.cos(b)) >% %<= f(0.014 * Math.sin(b)) >% %<= f(h / 2 - 0.08 * rand()) >%
+            rotation 0 0 1 %<= f(b) >%
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.2 0.45 0.15
+                  roughness 0.6
+                  metalness 0
+                }
+                geometry Box {
+                  size 0.03 0.008 0.0012
+                }
+              }
+            ]
+          }
+          %< } >%
+        ]
+      }
+      %< } >%
+      %< } else if (t === 'host_stand') { >%
+      Pose {
+        translation 0 0 0.08
+        children [
+          Shape {
+            appearance DEF DARK_WOOD PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wood_dark.jpg"
+                ]
+              }
+              roughness 0.55
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(L) >% %<= f(Wd) >% 0.16
+            }
+          }
+        ]
+      }
+      Pose {
+        translation 0.004 0 0.165
+        rotation 0 1 0 -0.35
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.55 0.07 0.06
+              roughness 0.3
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(L + 0.01) >% %<= f(Wd + 0.01) >% 0.006
+            }
+          }
+          Pose {
+            translation 0 0 0.004
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.95 0.93 0.86
+                  roughness 0.9
+                  metalness 0
+                }
+                geometry Box {
+                  size 0.04 0.06 0.002
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } else if (t === 'umbrella_stand') { >%
+      Pose {
+        translation 0 0 0.035
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.3 0.32 0.34
+              roughness 0.3
+              metalness 0.9
+            }
+            geometry Cylinder {
+              height 0.07
+              radius %<= f(L * 0.85) >%
+              subdivision 20
+            }
+          }
+        ]
+      }
+      %< for (const [a, col] of [[0.3, '0.15 0.25 0.6'], [2.4, '0.7 0.12 0.1'], [4.4, '0.15 0.15 0.15']]) { >%
+      Pose {
+        translation %<= f(0.01 * Math.cos(a)) >% %<= f(0.01 * Math.sin(a)) >% 0.07
+        rotation %<= f(-Math.sin(a)) >% %<= f(Math.cos(a)) >% 0 0.18
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor %<= col >%
+              roughness 0.6
+              metalness 0
+            }
+            geometry Cone {
+              bottomRadius 0.009
+              height 0.12
+              subdivision 10
+            }
+          }
+          Pose {
+            translation 0 0 0.075
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.35 0.2 0.1
+                  roughness 0.5
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.03
+                  radius 0.0015
+                  subdivision 6
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } >%
+      %< } else if (t === 'bussing_cart' || t === 'tray_rack') { >%
+      %< const levels = t === 'bussing_cart' ? [0.02, 0.07, 0.12] : [0.03, 0.08, 0.13, 0.18];
+         const top = levels[levels.length - 1]; >%
+      %< for (const [sx, sy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { >%
+      Pose {
+        translation %<= f(sx * (L / 2 - 0.004)) >% %<= f(sy * (Wd / 2 - 0.004)) >% %<= f(top / 2 + 0.006) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.72 0.74 0.76
+              roughness 0.3
+              metalness 0.9
+            }
+            geometry Cylinder {
+              height %<= f(top) >%
+              radius 0.0025
+              subdivision 8
+            }
+          }
+        ]
+      }
+      %< if (t === 'bussing_cart') { >%
+      Pose {
+        translation %<= f(sx * (L / 2 - 0.004)) >% %<= f(sy * (Wd / 2 - 0.004)) >% 0.005
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.1 0.1 0.1
+              roughness 0.7
+              metalness 0
+            }
+            geometry Sphere {
+              radius 0.005
+              subdivision 1
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< } >%
+      %< for (const z of levels) { >%
+      Pose {
+        translation 0 0 %<= f(z + 0.006) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.72 0.74 0.76
+              roughness 0.3
+              metalness 0.9
+            }
+            geometry Box {
+              size %<= f(L) >% %<= f(Wd) >% 0.003
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< const plateCols = ['0.92 0.92 0.92', '0.27 0.47 0.82', '0.86 0.24 0.2', '0.82 0.67 0.16'];
+         for (let i = 0; i < levels.length - (t === 'bussing_cart' ? 0 : 1); ++i) {
+           for (let j = 0; j < 3; ++j) {
+             const n = 2 + Math.floor(3 * rand()); const x = (j - 1) * L / 3.2; >%
+      Pose {
+        translation %<= f(x) >% 0 %<= f(levels[i] + 0.0075 + n * 0.0013) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor %<= t === 'tray_rack' ? '0.1 0.06 0.05' : plateCols[(i + j) % 4] >%
+              roughness 0.25
+              metalness 0
+            }
+            geometry Cylinder {
+              height %<= f(n * 0.0026) >%
+              radius %<= f(t === 'tray_rack' ? Math.min(0.034, Wd / 2 - 0.002) : 0.0145) >%
+              subdivision 18
+            }
+          }
+        ]
+      }
+      %< } } >%
+      %< } else if (t === 'crate_stack') { >%
+      %< for (const [z, yaw, col] of [[0, 0, '0.15 0.35 0.75'], [0.05, 0.12, '0.15 0.55 0.3']]) { >%
+      Pose {
+        translation 0 0 %<= f(z + 0.025) >%
+        rotation 0 0 1 %<= f(yaw) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor %<= col >%
+              roughness 0.5
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(L * 0.92) >% %<= f(Wd * 0.88) >% 0.05
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< for (let k = 0; k < 5; ++k) { >%
+      Pose {
+        translation %<= f((k - 2) * 0.016) >% %<= f(0.01 * (rand() - 0.5)) >% 0.104
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor %<= k % 2 ? '0.9 0.45 0.1' : '0.75 0.85 0.4' >%
+              roughness 0.6
+              metalness 0
+            }
+            geometry Sphere {
+              radius 0.007
+              subdivision 1
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< } else if (t === 'wet_floor_sign') { >%
+      %< for (const s of [1, -1]) { >%
+      Pose {
+        translation %<= f(s * L / 4) >% 0 %<= f(H / 2 - 0.002) >%
+        rotation 0 1 0 %<= f(s * 0.22) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.98 0.8 0.05
+              roughness 0.4
+              metalness 0
+            }
+            geometry Box {
+              size 0.003 %<= f(Wd) >% %<= f(H) >%
+            }
+          }
+          Pose {
+            translation %<= f(s * 0.0017) >% 0 0.005
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.05 0.05 0.05
+                  roughness 0.5
+                  metalness 0
+                }
+                geometry Box {
+                  size 0.001 %<= f(Wd * 0.5) >% %<= f(Wd * 0.5) >%
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } >%
+      %< } else if (t === 'drink_station') { >%
+      Pose {
+        translation 0 0 %<= f(H / 2) >%
+        children [
+          Shape {
+            appearance DEF DARK_WOOD PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wood_dark.jpg"
+                ]
+              }
+              textureTransform TextureTransform {
+                scale 1 4
+              }
+              roughness 0.55
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(L) >% %<= f(Wd) >% %<= f(H) >%
+            }
+          }
+        ]
+      }
+      Pose {
+        translation -0.004 0 %<= f(H + 0.004) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wood_light.jpg"
+                ]
+              }
+              roughness 0.4
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(L + 0.012) >% %<= f(Wd + 0.01) >% 0.008
+            }
+          }
+        ]
+      }
+      # tea urn
+      Pose {
+        translation 0.01 0.3 %<= f(H + 0.04) >%
+        children [
+          Shape {
+            appearance DEF STEEL PBRAppearance {
+              baseColor 0.75 0.76 0.78
+              roughness 0.2
+              metalness 1
+            }
+            geometry Cylinder {
+              height 0.064
+              radius 0.028
+              subdivision 24
+            }
+          }
+          Pose {
+            translation -0.03 0 -0.015
+            rotation 0 1 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.1 0.1 0.1
+                  roughness 0.4
+                  metalness 0
+                }
+                geometry Cylinder {
+                  height 0.01
+                  radius 0.003
+                  subdivision 8
+                }
+              }
+            ]
+          }
+        ]
+      }
+      # beer server with three taps
+      Pose {
+        translation 0.02 -0.28 %<= f(H + 0.045) >%
+        children [
+          Shape {
+            appearance USE STEEL
+            geometry Box {
+              size 0.06 0.1 0.075
+            }
+          }
+          %< for (const y of [-0.03, 0, 0.03]) { >%
+          Pose {
+            translation -0.036 %<= f(y) >% 0.02
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.85 0.62 0.2
+                  roughness 0.2
+                  metalness 1
+                }
+                geometry Box {
+                  size 0.012 0.005 0.02
+                }
+              }
+            ]
+          }
+          %< } >%
+        ]
+      }
+      # rows of tea cups and glasses
+      %< for (let i = 0; i < 5; ++i) { for (let j = 0; j < 2; ++j) { >%
+      Pose {
+        translation %<= f(-0.035 + 0.025 * j) >% %<= f(-0.13 + 0.05 * i) >% %<= f(H + 0.016) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor %<= j ? '0.55 0.42 0.3' : '0.85 0.9 0.95' >%
+              roughness %<= j ? 0.7 : 0.05 >%
+              metalness 0
+              transparency %<= j ? 0 : 0.4 >%
+            }
+            geometry Cylinder {
+              height %<= j ? 0.016 : 0.026 >%
+              radius %<= j ? 0.0075 : 0.007 >%
+              subdivision 14
+            }
+          }
+        ]
+      }
+      %< } } >%
+      # bottles on the back shelf
+      %< for (let i = 0; i < 6; ++i) { >%
+      Pose {
+        translation 0.045 %<= f(0.115 + 0.026 * i) >% %<= f(H + 0.033) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor %<= ['0.2 0.45 0.25', '0.55 0.3 0.1', '0.85 0.85 0.8'][i % 3] >%
+              roughness 0.1
+              metalness 0
+              transparency 0.2
+            }
+            geometry Cylinder {
+              height 0.05
+              radius 0.006
+              subdivision 12
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< } >%
+    ]
+    boundingObject %< if (round) { >% Pose {
+      translation 0 0 %<= f(H / 2) >%
+      children [
+        Cylinder {
+          height %<= f(H) >%
+          radius %<= f(L) >%
+          subdivision 16
+        }
+      ]
+    }
+    %< } else { >% Pose {
+      translation 0 0 %<= f(H / 2) >%
+      children [
+        Box {
+          size %<= f(L) >% %<= f(Wd) >% %<= f(H) >%
+        }
+      ]
+    }
+    %< } >%
+    locked TRUE
+  }
+}

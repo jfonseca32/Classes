@@ -1,0 +1,275 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: floor and walls of the revolving-sushi restaurant.
+# The dining room spans x in [-sizeX/2, sizeX/2] and y in [-sizeY/2, sizeY/2]
+# (world frame, origin at the room center); the walls stand just outside.
+# Walls: dark wood wainscot, plaster, trims. North wall: shop banner and two
+# shoji windows. West wall: glass entrance doors. South wall: kitchen doorway
+# with a noren curtain and two menu boards. East wall: the drinks board above
+# the drink station.
+# template language: javascript
+
+PROTO RestaurantRoom [
+  field SFVec3f    translation  0 0 0
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "restaurant room"
+  field SFFloat    sizeX        3.2
+  field SFFloat    sizeY        1.7
+  field SFFloat    wallHeight   0.36
+  field SFFloat    wallThickness 0.03
+]
+{
+  %<
+    const X = fields.sizeX.value / 2, Y = fields.sizeY.value / 2;
+    const H = fields.wallHeight.value, T = fields.wallThickness.value;
+    const WAINSCOT = 0.12;
+    const f = (v) => (Math.abs(v) < 5e-6 ? '0' : v.toFixed(4));
+    // Walls: [center x, center y, length, normal x, normal y] (normal points into the room).
+    const walls = [
+      [0, Y + T / 2, 2 * X + 2 * T, 0, -1],
+      [0, -Y - T / 2, 2 * X + 2 * T, 0, 1],
+      [X + T / 2, 0, 2 * Y, -1, 0],
+      [-X - T / 2, 0, 2 * Y, 1, 0],
+    ];
+    // A vertical textured quad facing (nx, ny), centered at (cx, cy, cz), w x h.
+    function quad(cx, cy, cz, nx, ny, w, h) {
+      const rx = -ny, ry = nx;   // "right" as seen by a viewer facing the quad
+      const p = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) =>
+        f(cx + rx * a * w / 2) + ' ' + f(cy + ry * a * w / 2) + ' ' + f(cz + b * h / 2));
+      return 'coord Coordinate { point [ ' + p.join(', ') + ' ] } texCoord TextureCoordinate { point [ 0 0, 1 0, 1 1, 0 1 ] }' +
+             ' coordIndex [ 0 1 2 3 -1 ] texCoordIndex [ 0 1 2 3 -1 ]';
+    }
+    // Decorations: [texture, cx, cy, cz, nx, ny, w, h, glow, frame]
+    const eps = 0.0025;
+    const decor = [
+      ['banner.jpg', 0, Y - eps, 0.3, 0, -1, 0.64, 0.08, 0.55, true],
+      ['window.jpg', -0.9, Y - eps, 0.215, 0, -1, 0.44, 0.22, 0.7, true],
+      ['window.jpg', 0.9, Y - eps, 0.215, 0, -1, 0.44, 0.22, 0.7, true],
+      ['kitchen_door.jpg', -0.1, -Y + eps, 0.13, 0, 1, 0.34, 0.26, 0.2, true],
+      ['noren.jpg', -0.1, -Y + 2.2 * eps, 0.175, 0, 1, 0.34, 0.17, 0.25, false],
+      ['menu_board.jpg', 0.75, -Y + eps, 0.255, 0, 1, 0.56, 0.14, 0.35, true],
+      ['menu_board.jpg', -0.95, -Y + eps, 0.255, 0, 1, 0.56, 0.14, 0.35, true],
+      ['drinks_board.jpg', X - eps, 0, 0.25, -1, 0, 0.34, 0.17, 0.4, true],
+    ];
+  >%
+  Solid {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    model "restaurant room"
+    children [
+      # ---------------- floor ----------------
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/floor_wood.jpg"
+            ]
+            filtering 5
+          }
+          roughness 0.4
+          metalness 0
+        }
+        geometry Plane {
+          size %<= f(2 * X) >% %<= f(2 * Y) >%
+        }
+      }
+      Pose {
+        translation 0 0 -0.003
+        children [
+          Shape {
+            castShadows FALSE
+            isPickable FALSE
+            appearance PBRAppearance {
+              baseColor 0.16 0.15 0.15
+              roughness 0.9
+              metalness 0
+            }
+            geometry Plane {
+              size 12 10
+            }
+          }
+        ]
+      }
+      # ---------------- walls ----------------
+      %< for (const [cx, cy, len, nx, ny] of walls) {
+           const sx = nx === 0 ? len : T, sy = nx === 0 ? T : len; >%
+      Pose {
+        translation %<= f(cx) >% %<= f(cy) >% %<= f(WAINSCOT / 2) >%
+        children [
+          Shape {
+            appearance DEF WAINSCOT_WOOD PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wood_dark.jpg"
+                ]
+              }
+              textureTransform TextureTransform {
+                scale 6 1
+              }
+              roughness 0.55
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(sx) >% %<= f(sy) >% %<= f(WAINSCOT) >%
+            }
+          }
+        ]
+      }
+      Pose {
+        translation %<= f(cx) >% %<= f(cy) >% %<= f((WAINSCOT + H) / 2) >%
+        children [
+          Shape {
+            appearance DEF PLASTER PBRAppearance {
+              baseColorMap ImageTexture {
+                url [
+                  "../textures/wall_plaster.jpg"
+                ]
+              }
+              roughness 0.9
+              metalness 0
+            }
+            geometry Box {
+              size %<= f(sx) >% %<= f(sy) >% %<= f(H - WAINSCOT) >%
+            }
+          }
+        ]
+      }
+      # chair rail and crown trim (stick out 4 mm into the room)
+      %< for (const [z, h] of [[WAINSCOT, 0.008], [H - 0.006, 0.012]]) { >%
+      Pose {
+        translation %<= f(cx + nx * 0.004) >% %<= f(cy + ny * 0.004) >% %<= f(z) >%
+        children [
+          Shape {
+            appearance USE WAINSCOT_WOOD
+            geometry Box {
+              size %<= f(sx + (nx === 0 ? 0 : 0.008)) >% %<= f(sy + (nx === 0 ? 0.008 : 0)) >% %<= f(h) >%
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< } >%
+      # ---------------- wall decorations ----------------
+      %< for (const [tex, cx, cy, cz, nx, ny, w, h, glow, frame] of decor) { >%
+      %< if (frame) { >%
+      Pose {
+        translation %<= f(cx - nx * 0.0005) >% %<= f(cy - ny * 0.0005) >% %<= f(cz) >%
+        children [
+          Shape {
+            appearance USE WAINSCOT_WOOD
+            geometry Box {
+              size %<= f(nx === 0 ? w + 0.02 : 0.006) >% %<= f(nx === 0 ? 0.006 : w + 0.02) >% %<= f(h + 0.02) >%
+            }
+          }
+        ]
+      }
+      %< } >%
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap ImageTexture {
+            url [
+              "../textures/%<= tex >%"
+            ]
+          }
+          emissiveColorMap ImageTexture {
+            url [
+              "../textures/%<= tex >%"
+            ]
+          }
+          emissiveIntensity %<= f(glow) >%
+          roughness 0.6
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= quad(cx + nx * 0.0035, cy + ny * 0.0035, cz, nx, ny, w, h) >%
+        }
+      }
+      %< } >%
+      # glass entrance doors on the west wall (two panels with wooden frames)
+      %< for (const y of [-0.095, 0.095]) { >%
+      Pose {
+        translation %<= f(-X + 0.004) >% %<= f(y) >% 0.125
+        children [
+          Shape {
+            appearance USE WAINSCOT_WOOD
+            geometry Box {
+              size 0.008 0.19 0.25
+            }
+          }
+          Pose {
+            translation 0.0045 0 0.005
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.55 0.7 0.78
+                  roughness 0.05
+                  metalness 0.2
+                  emissiveColor 0.25 0.32 0.45
+                  emissiveIntensity 0.6
+                  transparency 0.1
+                }
+                geometry Box {
+                  size 0.002 0.16 0.21
+                }
+              }
+            ]
+          }
+          Pose {
+            translation 0.009 %<= f(y < 0 ? 0.07 : -0.07) >% 0.0
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.75 0.62 0.3
+                  roughness 0.2
+                  metalness 1
+                }
+                geometry Box {
+                  size 0.006 0.004 0.06
+                }
+              }
+            ]
+          }
+        ]
+      }
+      %< } >%
+      Shape {
+        castShadows FALSE
+        appearance PBRAppearance {
+          baseColorMap DEF ENTRY_BANNER ImageTexture {
+            url [
+              "../textures/banner.jpg"
+            ]
+          }
+          emissiveColorMap USE ENTRY_BANNER
+          emissiveIntensity 0.5
+          roughness 0.6
+          metalness 0
+        }
+        geometry IndexedFaceSet {
+          %<= quad(-X + 0.0035, 0, 0.305, 1, 0, 0.4, 0.05) >%
+        }
+      }
+    ]
+    boundingObject Group {
+      children [
+        %< for (const [cx, cy, len, nx, ny] of walls) {
+             const sx = nx === 0 ? len : T, sy = nx === 0 ? T : len; >%
+        Pose {
+          translation %<= f(cx) >% %<= f(cy) >% %<= f(H / 2) >%
+          children [
+            Box {
+              size %<= f(sx) >% %<= f(sy) >% %<= f(H) >%
+            }
+          ]
+        }
+        %< } >%
+        Plane {
+          size %<= f(2 * X) >% %<= f(2 * Y) >%
+        }
+      ]
+    }
+    locked TRUE
+  }
+}

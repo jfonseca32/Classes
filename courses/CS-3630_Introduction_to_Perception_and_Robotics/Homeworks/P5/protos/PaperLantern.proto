@@ -1,0 +1,96 @@
+#VRML_SIM R2025a utf8
+# CS 3630 Project 5: a red paper lantern (chouchin) hanging from a cord.
+# The origin is the top of the cord; the lantern hangs `cordLength` below it.
+# With `light` TRUE it also carries a warm PointLight (use it sparingly).
+# template language: javascript
+
+PROTO PaperLantern [
+  field SFVec3f    translation  0 0 0.49
+  field SFRotation rotation     0 0 1 0
+  field SFString   name         "lantern"
+  field SFFloat    cordLength   0.05
+  field SFFloat    glow         1.2
+  field SFBool     light        FALSE
+  field SFFloat    lightIntensity 0.35
+]
+{
+  %< const c = fields.cordLength.value; const zc = -(c + 0.032); const f = (v) => v.toFixed(4); >%
+  Pose {
+    translation IS translation
+    rotation IS rotation
+    children [
+      Pose {
+        translation 0 0 %<= f(-c / 2) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.1 0.08 0.06
+              roughness 0.8
+              metalness 0
+            }
+            geometry Cylinder {
+              height %<= f(c) >%
+              radius 0.0008
+              subdivision 6
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0 0 %<= f(zc) >%
+        rotation 0 0 1 1.5708
+        scale 1 1 1.3
+        children [
+          Shape {
+            castShadows FALSE
+            appearance PBRAppearance {
+              baseColorMap DEF LANTERN_ART ImageTexture {
+                url [
+                  "../textures/lantern.jpg"
+                ]
+              }
+              emissiveColorMap USE LANTERN_ART
+              emissiveIntensity IS glow
+              roughness 0.9
+              metalness 0
+            }
+            geometry Sphere {
+              radius 0.025
+              subdivision 3
+              ico FALSE
+            }
+          }
+        ]
+      }
+      %< for (const dz of [0.031, -0.031]) { >%
+      Pose {
+        translation 0 0 %<= f(zc + dz) >%
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.08 0.06 0.05
+              roughness 0.5
+              metalness 0
+            }
+            geometry Cylinder {
+              height 0.006
+              radius 0.013
+              subdivision 16
+            }
+          }
+        ]
+      }
+      %< } >%
+      %< if (fields.light.value) { >%
+      PointLight {
+        location 0 0 %<= f(zc) >%
+        color 1 0.72 0.45
+        intensity IS lightIntensity
+        attenuation 0 0 1
+        radius 3
+        castShadows FALSE
+      }
+      %< } >%
+    ]
+  }
+}
